@@ -1,8 +1,7 @@
 /* ========================================
    Gazi DOTT — Events Manager
    Fetch, render, and filter events
-   Now uses server API instead of localStorage
-   Dynamic categories loaded from API
+   Static-first: local overrides + JSON fallback
    ======================================== */
 
 // In-memory cache for events (avoids redundant fetches)
@@ -13,17 +12,43 @@ const CACHE_TTL = 5000; // 5 seconds
 // In-memory cache for categories
 let _categoriesCache = null;
 let _categoriesCacheTime = 0;
+const EVENTS_STORAGE_KEY = 'dott-events-data';
+const CATEGORIES_STORAGE_KEY = 'dott-categories-data';
+
+function readStoredArray(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeStoredArray(key, data) {
+    if (!Array.isArray(data)) return;
+    localStorage.setItem(key, JSON.stringify(data));
+}
 
 /**
- * Get all events from the server API
+ * Get all events from local overrides or static JSON.
  */
 async function getEvents() {
     const now = Date.now();
     if (_eventsCache && (now - _eventsCacheTime) < CACHE_TTL) {
         return _eventsCache;
     }
+
+    const stored = readStoredArray(EVENTS_STORAGE_KEY);
+    if (stored) {
+        _eventsCache = stored;
+        _eventsCacheTime = now;
+        return _eventsCache;
+    }
+
     try {
-        const response = await fetch('/api/events');
+        const response = await fetch('data/events.json');
         if (!response.ok) throw new Error('Failed to fetch events');
         _eventsCache = await response.json();
         _eventsCacheTime = now;
@@ -42,16 +67,36 @@ function invalidateEventsCache() {
     _eventsCacheTime = 0;
 }
 
+function setEventsData(events) {
+    const normalized = Array.isArray(events) ? events : [];
+    writeStoredArray(EVENTS_STORAGE_KEY, normalized);
+    _eventsCache = normalized;
+    _eventsCacheTime = Date.now();
+}
+
+function resetEventsData() {
+    localStorage.removeItem(EVENTS_STORAGE_KEY);
+    invalidateEventsCache();
+}
+
 /**
- * Get all categories from the server API
+ * Get all categories from local overrides or static JSON.
  */
 async function getCategories() {
     const now = Date.now();
     if (_categoriesCache && (now - _categoriesCacheTime) < CACHE_TTL) {
         return _categoriesCache;
     }
+
+    const stored = readStoredArray(CATEGORIES_STORAGE_KEY);
+    if (stored) {
+        _categoriesCache = stored;
+        _categoriesCacheTime = now;
+        return _categoriesCache;
+    }
+
     try {
-        const response = await fetch('/api/categories');
+        const response = await fetch('data/categories.json');
         if (!response.ok) throw new Error('Failed to fetch categories');
         _categoriesCache = await response.json();
         _categoriesCacheTime = now;
@@ -68,6 +113,18 @@ async function getCategories() {
 function invalidateCategoriesCache() {
     _categoriesCache = null;
     _categoriesCacheTime = 0;
+}
+
+function setCategoriesData(categories) {
+    const normalized = Array.isArray(categories) ? categories : [];
+    writeStoredArray(CATEGORIES_STORAGE_KEY, normalized);
+    _categoriesCache = normalized;
+    _categoriesCacheTime = Date.now();
+}
+
+function resetCategoriesData() {
+    localStorage.removeItem(CATEGORIES_STORAGE_KEY);
+    invalidateCategoriesCache();
 }
 
 /**
@@ -90,7 +147,7 @@ function getEventDesc(event) {
 const COLOR_MAP = COLOR_CONFIG.badge;
 
 /**
- * Get category badge HTML (dynamic — uses categories from API cache)
+ * Get category badge HTML (dynamic — uses cached categories)
  */
 function getCategoryBadge(categoryId) {
     const cats = _categoriesCache || [];

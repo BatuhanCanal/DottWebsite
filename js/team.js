@@ -1,23 +1,54 @@
 /* ========================================
    Gazi DOTT — Team Member Manager
-   Now uses server API instead of localStorage
+   Static-first: local overrides + JSON fallback
    ======================================== */
 
 // In-memory cache for team members
 let _teamCache = null;
 let _teamCacheTime = 0;
 const TEAM_CACHE_TTL = 5000; // 5 seconds
+const TEAM_STORAGE_KEY = 'dott-team-data';
+
+function readStoredTeam() {
+    try {
+        const raw = localStorage.getItem(TEAM_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeStoredTeam(team) {
+    localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(Array.isArray(team) ? team : []));
+}
+
+function normalizeTeamOrder(team) {
+    return team
+        .slice()
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .map((member, idx) => ({ ...member, order: idx }));
+}
 
 /**
- * Get all team members from server API
+ * Get all team members from local overrides or static JSON.
  */
 async function getTeamMembers() {
     const now = Date.now();
     if (_teamCache && (now - _teamCacheTime) < TEAM_CACHE_TTL) {
         return _teamCache;
     }
+
+    const stored = readStoredTeam();
+    if (stored) {
+        _teamCache = stored;
+        _teamCacheTime = now;
+        return _teamCache;
+    }
+
     try {
-        const response = await fetch('/api/team');
+        const response = await fetch('data/team.json');
         if (!response.ok) throw new Error('Failed to fetch team');
         _teamCache = await response.json();
         _teamCacheTime = now;
@@ -36,56 +67,69 @@ function invalidateTeamCache() {
     _teamCacheTime = 0;
 }
 
+function setTeamMembersData(team) {
+    const normalized = normalizeTeamOrder(Array.isArray(team) ? team : []);
+    writeStoredTeam(normalized);
+    _teamCache = normalized;
+    _teamCacheTime = Date.now();
+}
+
+function resetTeamMembersData() {
+    localStorage.removeItem(TEAM_STORAGE_KEY);
+    invalidateTeamCache();
+}
+
 /**
- * Add a new team member via API
+ * Add a new team member
  */
 async function addTeamMember(memberData) {
-    const response = await fetch('/api/team', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(memberData)
-    });
-    if (!response.ok) throw new Error('Failed to add member');
-    invalidateTeamCache();
-    return await response.json();
+    const team = (await getTeamMembers()).slice();
+    const created = {
+        ...memberData,
+        id: `member_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+        order: team.length
+    };
+    team.push(created);
+    setTeamMembersData(team);
+    return created;
 }
 
 /**
- * Update a team member via API
+ * Update a team member
  */
 async function updateTeamMember(id, data) {
-    const response = await fetch(`/api/team/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!response.ok) throw new Error('Failed to update member');
-    invalidateTeamCache();
-    return await response.json();
+    const team = (await getTeamMembers()).slice();
+    const idx = team.findIndex(m => m.id === id);
+    if (idx !== -1) {
+        team[idx] = { ...team[idx], ...data, id, order: team[idx].order || 0 };
+        setTeamMembersData(team);
+        return team[idx];
+    }
 }
 
 /**
- * Delete a team member via API
+ * Delete a team member
  */
 async function deleteTeamMember(id) {
-    const response = await fetch(`/api/team/${id}`, {
-        method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Failed to delete member');
-    invalidateTeamCache();
+    const team = (await getTeamMembers()).filter(m => m.id !== id);
+    setTeamMembersData(team);
 }
 
 /**
- * Move a team member up or down via API
+ * Move a team member up or down
  */
 async function moveTeamMember(id, direction) {
-    const response = await fetch(`/api/team/${id}/move`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ direction })
-    });
-    if (!response.ok) throw new Error('Failed to move member');
-    invalidateTeamCache();
+    const team = normalizeTeamOrder(await getTeamMembers());
+    const idx = team.findIndex(m => m.id === id);
+    if (idx === -1) return;
+
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= team.length) return;
+
+    const tempOrder = team[idx].order;
+    team[idx].order = team[swapIdx].order;
+    team[swapIdx].order = tempOrder;
+    setTeamMembersData(team);
 }
 
 /**
@@ -143,4 +187,4 @@ async function renderTeamMembers() {
     }).join('');
 }
 
-// (exportTeamJSON removed — server export endpoint handles this)
+// (export handled in admin.js for static mode)

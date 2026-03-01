@@ -1,172 +1,187 @@
 /* ========================================
    Gazi DOTT — Admin Panel Logic v3
-   Server-side auth, API-based CRUD, file upload
+   Static mode auth + local data CRUD + client-side image upload
    ========================================
-   All authentication and data operations now go through
-   the Express backend (/api/*). No secrets or data are
-   stored client-side.
+   Works on static hosting (GitHub Pages / Netlify).
+   Data changes are stored in browser localStorage.
    ======================================== */
 
-// (ADMIN_AUTH_KEY removed — was dead code from old client-side auth)
+const ADMIN_SESSION_KEY = 'dott-admin-session';
+const ADMIN_PASSWORD_HASH_KEY = 'dott-admin-password-hash';
 
 // Currently editing event/member/category
 let editingEventId = null;
 let editingMemberId = null;
 let editingCategoryId = null;
-// Current selected image (URL path from server)
+// Current selected image URL/data URI
 let currentEventImage = '';
 let currentMemberPhoto = '';
 // Current selected color for category
 let currentCategoryColor = 'blue';
 
 /* ========================================
-   Authentication (Server-Side)
+   Authentication (Client-Side)
    ======================================== */
 
 /**
- * Check if user is authenticated via server session
+ * Hash text with SHA-256 for password comparison.
+ */
+async function sha256(text) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const digest = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Check if admin session is active.
  */
 async function isAdminAuthenticated() {
-    try {
-        const response = await fetch('/api/auth/status');
-        const data = await response.json();
-        return data.authenticated === true;
-    } catch (err) {
-        return false;
-    }
+    return sessionStorage.getItem(ADMIN_SESSION_KEY) === '1';
 }
 
 /**
- * Login via server API
+ * Login with stored password hash.
+ * First successful login initializes the password for this browser.
  */
 async function adminLogin(password) {
+    const value = String(password || '').trim();
+    if (!value) return false;
+
     try {
-        const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password })
-        });
-        const data = await response.json();
-        return data.success === true;
-    } catch (err) {
+        const providedHash = await sha256(value);
+        const storedHash = localStorage.getItem(ADMIN_PASSWORD_HASH_KEY);
+
+        if (!storedHash) {
+            localStorage.setItem(ADMIN_PASSWORD_HASH_KEY, providedHash);
+            sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
+            return true;
+        }
+
+        if (storedHash === providedHash) {
+            sessionStorage.setItem(ADMIN_SESSION_KEY, '1');
+            return true;
+        }
+        return false;
+    } catch {
         return false;
     }
 }
 
 /**
- * Logout via server API
+ * Logout from client-side session
  */
 async function adminLogout() {
-    try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (err) {
-        // Ignore
-    }
+    sessionStorage.removeItem(ADMIN_SESSION_KEY);
     window.location.reload();
 }
 
-// (generateId removed — server generates IDs; was dead code)
+function generateClientId(prefix) {
+    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 /* ========================================
-   Event CRUD (API-based)
+   Event CRUD (local storage)
    ======================================== */
 
 async function addEvent(eventData) {
-    const response = await fetch('/api/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(eventData)
-    });
-    if (!response.ok) throw new Error('Failed to create event');
-    invalidateEventsCache();
-    return await response.json();
+    const events = (await getEvents()).slice();
+    const created = {
+        ...eventData,
+        id: generateClientId('evt'),
+        createdAt: new Date().toISOString()
+    };
+    events.push(created);
+    setEventsData(events);
+    return created;
 }
 
 async function updateEvent(id, data) {
-    const response = await fetch(`/api/events/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!response.ok) throw new Error('Failed to update event');
-    invalidateEventsCache();
+    const events = (await getEvents()).slice();
+    const idx = events.findIndex(e => e.id === id);
+    if (idx === -1) throw new Error('Event not found');
+
+    events[idx] = {
+        ...events[idx],
+        ...data,
+        id,
+        updatedAt: new Date().toISOString()
+    };
+    setEventsData(events);
 }
 
 async function deleteEvent(id) {
-    const response = await fetch(`/api/events/${id}`, {
-        method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Failed to delete event');
-    invalidateEventsCache();
+    const events = await getEvents();
+    const filtered = events.filter(e => e.id !== id);
+    if (filtered.length === events.length) throw new Error('Event not found');
+    setEventsData(filtered);
 }
 
 async function deletePastEvents() {
-    const response = await fetch('/api/events/past', {
-        method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Failed to delete past events');
-    invalidateEventsCache();
+    const now = Date.now();
+    const events = await getEvents();
+    const filtered = events.filter(e => new Date(e.date).getTime() >= now);
+    setEventsData(filtered);
 }
 
 /* ========================================
-   Category CRUD (API-based)
+   Category CRUD (local storage)
    ======================================== */
 
 async function addCategory(data) {
-    const response = await fetch('/api/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to create category');
+    const categories = (await getCategories()).slice();
+    const baseName = (data.name_en || data.name_tr || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    const id = baseName || generateClientId('cat');
+    if (categories.some(c => c.id === id)) {
+        throw new Error('Category with this name already exists');
     }
-    invalidateCategoriesCache();
-    return await response.json();
+
+    const created = {
+        id,
+        name_tr: data.name_tr || '',
+        name_en: data.name_en || '',
+        icon: data.icon || 'category',
+        color: data.color || 'gray'
+    };
+    categories.push(created);
+    setCategoriesData(categories);
+    return created;
 }
 
 async function updateCategory(id, data) {
-    const response = await fetch(`/api/categories/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-    if (!response.ok) throw new Error('Failed to update category');
-    invalidateCategoriesCache();
+    const categories = (await getCategories()).slice();
+    const idx = categories.findIndex(c => c.id === id);
+    if (idx === -1) throw new Error('Category not found');
+
+    categories[idx] = {
+        ...categories[idx],
+        ...data,
+        id
+    };
+    setCategoriesData(categories);
 }
 
 async function deleteCategory(id) {
-    const response = await fetch(`/api/categories/${id}`, {
-        method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Failed to delete category');
-    invalidateCategoriesCache();
+    const categories = await getCategories();
+    const filtered = categories.filter(c => c.id !== id);
+    if (filtered.length === categories.length) throw new Error('Category not found');
+    setCategoriesData(filtered);
 }
 
 /* ========================================
-   Image Upload Handling (Server-based)
+   Image Upload Handling (Client-side)
    ======================================== */
 
 /**
- * Upload a file to the server and return the URL
+ * Convert a file to a data URI for static hosting.
  */
 async function uploadImageFile(file) {
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
+    return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Upload failed'));
+        reader.readAsDataURL(file);
     });
-
-    if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: 'Upload failed' }));
-        throw new Error(err.error || 'Upload failed');
-    }
-
-    const data = await response.json();
-    return data.url; // e.g. "/uploads/1234567890_abcd1234.jpg"
 }
 
 /**
@@ -217,10 +232,10 @@ function setupImageUpload(dropZoneId, previewId, onImageSet) {
 }
 
 /**
- * Handle an image file — upload to server and show preview
+ * Handle an image file and show preview
  */
 async function handleImageFile(file, previewEl, onImageSet) {
-    // Reject oversized files (2MB limit, enforced server-side too)
+    // Reject oversized files (2MB max in static mode)
     if (file.size > 2 * 1024 * 1024) {
         showToast(t('admin.imageSizeWarning'), 'error');
         return;
@@ -233,7 +248,7 @@ async function handleImageFile(file, previewEl, onImageSet) {
             previewEl.style.opacity = '0.5';
         }
 
-        // Upload to server
+        // Convert to storable data URI
         const url = await uploadImageFile(file);
 
         if (previewEl) {
@@ -724,7 +739,7 @@ function updateCategorySelector(category) {
 }
 
 /**
- * Load category selector cards dynamically from API
+ * Load category selector cards dynamically from category data
  */
 async function loadCategorySelector() {
     const grid = document.getElementById('category-selector-grid');
@@ -943,14 +958,17 @@ function updateColorPicker(color) {
 }
 
 /* ========================================
-   JSON Export / Import (Server-based)
+   JSON Export / Import (Client-side)
    ======================================== */
 
 async function handleExportJSON() {
     try {
-        const response = await fetch('/api/data/export');
-        if (!response.ok) throw new Error('Export failed');
-        const data = await response.json();
+        const [events, team, categories] = await Promise.all([
+            getEvents(),
+            getTeamMembers(),
+            getCategories()
+        ]);
+        const data = { events, team, categories };
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -983,21 +1001,33 @@ async function handleImportJSON() {
         reader.onload = async (ev) => {
             try {
                 const data = JSON.parse(ev.target.result);
-                const response = await fetch('/api/data/import', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
 
-                if (!response.ok) {
-                    const err = await response.json().catch(() => ({}));
-                    throw new Error(err.error || 'Import failed');
+                if (Array.isArray(data)) {
+                    setEventsData(data);
+                } else if (data && typeof data === 'object') {
+                    if (data.events !== undefined) {
+                        if (!Array.isArray(data.events)) throw new Error('Invalid events payload');
+                        setEventsData(data.events);
+                    }
+                    if (data.team !== undefined) {
+                        if (!Array.isArray(data.team)) throw new Error('Invalid team payload');
+                        setTeamMembersData(data.team);
+                    }
+                    if (data.categories !== undefined) {
+                        if (!Array.isArray(data.categories)) throw new Error('Invalid categories payload');
+                        setCategoriesData(data.categories);
+                    }
+                } else {
+                    throw new Error('Invalid import format');
                 }
 
                 invalidateEventsCache();
                 invalidateTeamCache();
+                invalidateCategoriesCache();
                 await renderAdminEvents();
                 await renderAdminTeam();
+                await renderAdminCategories();
+                await loadCategorySelector();
                 showToast(currentLang === 'tr' ? 'Veriler başarıyla içe aktarıldı!' : 'Data imported successfully!', 'success');
             } catch (err) {
                 showToast(currentLang === 'tr' ? 'Geçersiz JSON dosyası!' : 'Invalid JSON file!', 'error');
