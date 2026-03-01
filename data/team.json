@@ -1,26 +1,26 @@
 [
     {
-        "id": "member_sample_1",
-        "name": "İsim Soyisim",
-        "role_tr": "Başkan",
-        "role_en": "President",
-        "photo": "",
-        "order": 0
+      "id": "member_sample_1",
+      "name": "İsim Soyisim",
+      "role_tr": "Başkan",
+      "role_en": "President",
+      "photo": "",
+      "order": 0
     },
     {
-        "id": "member_sample_2",
-        "name": "İsim Soyisim",
-        "role_tr": "Başkan Yardımcısı",
-        "role_en": "Vice President",
-        "photo": "",
-        "order": 1
+      "id": "member_sample_2",
+      "name": "İsim Soyisim",
+      "role_tr": "Başkan Yardımcısı",
+      "role_en": "Vice President",
+      "photo": "",
+      "order": 1
     },
     {
-        "id": "member_sample_3",
-        "name": "İsim Soyisim",
-        "role_tr": "Koordinatör",
-        "role_en": "Coordinator",
-        "photo": "",
-        "order": 2
+      "id": "member_sample_3",
+      "name": "İsim Soyisim",
+      "role_tr": "Koordinatör",
+      "role_en": "Coordinator",
+      "photo": "",
+      "order": 2
     }
 ]
