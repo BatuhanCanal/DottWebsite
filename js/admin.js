@@ -1082,14 +1082,20 @@ async function pushFileToGitHub(path, content, token) {
     let sha = null;
     try {
         const getRes = await fetch(`${url}?ref=${GITHUB_BRANCH}`, {
-            headers: { 'Authorization': `token ${token}` }
+            headers: {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            cache: 'no-store' // IMPORTANT: Prevent browser from caching the old SHA
         });
         if (getRes.ok) {
             const data = await getRes.json();
             sha = data.sha;
+        } else {
+            console.warn(`Failed to fetch current SHA for ${path}: ${getRes.status}`);
         }
     } catch (e) {
-        // File might not exist yet, which is fine
+        console.warn(`Error fetching SHA for ${path}:`, e);
     }
 
     // 2. Safely encode content to Base64 (supports UTF-8)
