@@ -963,10 +963,37 @@ function updateColorPicker(color) {
 
 const GITHUB_REPO = 'BatuhanCanal/DottWebsite';
 const GITHUB_BRANCH = 'static';
-const GITHUB_TOKEN_KEY = 'dott-github-token';
+const GITHUB_TOKEN_KEY = 'dott_github_token'; // Used for cookie
+
+// --- Cookie Helpers ---
+function setCookie(name, value, days = 365) {
+    let expires = "";
+    if (days) {
+        let date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + "; expires=" + expires + "; path=/; SameSite=Lax";
+}
+
+function getCookie(name) {
+    let nameEQ = name + "=";
+    let ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+function deleteCookie(name) {
+    document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+}
+// ----------------------
 
 async function handleGitHubSync() {
-    const token = localStorage.getItem(GITHUB_TOKEN_KEY);
+    const token = getCookie(GITHUB_TOKEN_KEY);
     if (!token) {
         showToast(currentLang === 'tr' ? 'Lütfen Ayarlar sekmesinden GitHub Token girin!' : 'Please configure GitHub Token in Settings!', 'error');
         switchAdminTab('settings');
@@ -991,6 +1018,61 @@ async function handleGitHubSync() {
         console.error(err);
         showToast((currentLang === 'tr' ? 'Hata: ' : 'Error: ') + (err.message || 'Sync failed'), 'error');
     }
+}
+
+async function handleGitHubPull() {
+    const token = getCookie(GITHUB_TOKEN_KEY);
+    if (!token) {
+        showToast(currentLang === 'tr' ? 'GitHub\'dan veri çekmek için Token gerekli.' : 'Token required to pull from GitHub.', 'error');
+        return false;
+    }
+
+    try {
+        showToast(currentLang === 'tr' ? 'GitHub\'dan güncel veriler çekiliyor...' : 'Pulling latest data from GitHub...', 'info');
+
+        const [eventsData, teamData, catData] = await Promise.all([
+            fetchFileFromGitHub('data/events.json', token),
+            fetchFileFromGitHub('data/team.json', token),
+            fetchFileFromGitHub('data/categories.json', token)
+        ]);
+
+        if (eventsData) setEventsData(eventsData);
+        if (teamData) setTeamMembersData(teamData);
+        if (catData) setCategoriesData(catData);
+
+        invalidateEventsCache();
+        invalidateTeamCache();
+        invalidateCategoriesCache();
+
+        await Promise.all([
+            loadCategorySelector(),
+            renderAdminEvents(),
+            renderAdminTeam(),
+            renderAdminCategories()
+        ]);
+
+        showToast(currentLang === 'tr' ? 'Veriler başarıyla güncellendi!' : 'Data successfully updated!', 'success');
+        return true;
+    } catch (err) {
+        console.error(err);
+        showToast((currentLang === 'tr' ? 'Çekme Hatası: ' : 'Pull Error: ') + (err.message || 'Failed'), 'error');
+        return false;
+    }
+}
+
+async function fetchFileFromGitHub(path, token) {
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}?ref=${GITHUB_BRANCH}`;
+    const res = await fetch(url, {
+        headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3.raw'
+        }
+    });
+    if (!res.ok) {
+        if (res.status === 404) return null; // File doesn't exist yet
+        throw new Error(`Failed to fetch ${path}`);
+    }
+    return await res.json();
 }
 
 async function pushFileToGitHub(path, content, token) {
@@ -1049,15 +1131,21 @@ async function initAdmin() {
     if (await isAdminAuthenticated()) {
         loginScreen.classList.add('hidden');
         adminContent.classList.remove('hidden');
-        // Pre-warm all caches in parallel (single round-trip batch)
-        await Promise.all([getCategories(), getEvents(), getTeamMembers()]);
-        // Render views in parallel (data is cached, no network calls)
-        await Promise.all([
-            loadCategorySelector(),
-            renderAdminEvents(),
-            renderAdminTeam(),
-            renderAdminCategories()
-        ]);
+
+        // Auto-pull from GitHub if a token is available to ensure we have the very latest data
+        const token = getCookie(GITHUB_TOKEN_KEY);
+        if (token) {
+            await handleGitHubPull();
+        } else {
+            // Pre-warm all caches locally
+            await Promise.all([getCategories(), getEvents(), getTeamMembers()]);
+            await Promise.all([
+                loadCategorySelector(),
+                renderAdminEvents(),
+                renderAdminTeam(),
+                renderAdminCategories()
+            ]);
+        }
         setupAdminForms();
     } else {
         loginScreen.classList.remove('hidden');
@@ -1074,13 +1162,19 @@ async function initAdmin() {
             if (success) {
                 loginScreen.classList.add('hidden');
                 adminContent.classList.remove('hidden');
-                await Promise.all([getCategories(), getEvents(), getTeamMembers()]);
-                await Promise.all([
-                    loadCategorySelector(),
-                    renderAdminEvents(),
-                    renderAdminTeam(),
-                    renderAdminCategories()
-                ]);
+
+                const token = getCookie(GITHUB_TOKEN_KEY);
+                if (token) {
+                    await handleGitHubPull();
+                } else {
+                    await Promise.all([getCategories(), getEvents(), getTeamMembers()]);
+                    await Promise.all([
+                        loadCategorySelector(),
+                        renderAdminEvents(),
+                        renderAdminTeam(),
+                        renderAdminCategories()
+                    ]);
+                }
                 setupAdminForms();
             } else {
                 showToast(t('admin.wrongPassword'), 'error');
@@ -1159,7 +1253,7 @@ function setupAdminForms() {
     const githubForm = document.getElementById('github-settings-form');
     if (githubForm) {
         // Load existing token
-        const existingToken = localStorage.getItem(GITHUB_TOKEN_KEY);
+        const existingToken = getCookie(GITHUB_TOKEN_KEY);
         if (existingToken) {
             const tokenInput = document.getElementById('github-token-input');
             if (tokenInput) tokenInput.value = existingToken;
@@ -1170,10 +1264,10 @@ function setupAdminForms() {
             const tokenInput = document.getElementById('github-token-input');
             const token = tokenInput ? tokenInput.value.trim() : '';
             if (token) {
-                localStorage.setItem(GITHUB_TOKEN_KEY, token);
+                setCookie(GITHUB_TOKEN_KEY, token, 365); // 1 year persistence
                 showToast(currentLang === 'tr' ? 'Token başarıyla kaydedildi!' : 'Token saved successfully!', 'success');
             } else {
-                localStorage.removeItem(GITHUB_TOKEN_KEY);
+                deleteCookie(GITHUB_TOKEN_KEY);
                 showToast(currentLang === 'tr' ? 'Token kaldırıldı.' : 'Token removed.', 'info');
             }
         });
