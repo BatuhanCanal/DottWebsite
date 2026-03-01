@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html class="dark" lang="tr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Yönetim Paneli — Gazi DOTT</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <link href="css/style.css" rel="stylesheet" />
+    <script src="js/tailwind-config.js"></script>
+    <style>
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            10%,
+            30%,
+            50%,
+            70%,
+            90% {
+                transform: translateX(-4px);
+            }
+
+            20%,
+            40%,
+            60%,
+            80% {
+                transform: translateX(4px);
+            }
+        }
+
+        .drop-zone {
+            border: 2px dashed #493622;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.border-primary {
+            border-color: #f48c25;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background-dark text-slate-100 min-h-screen flex flex-col overflow-x-hidden antialiased selection:bg-primary selection:text-white">
+
+    <div id="navbar-placeholder"></div>
+
+    <main class="flex-grow">
+        <!-- ===================== LOGIN SCREEN ===================== -->
+        <div id="admin-login-screen" class="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4">
+            <div class="w-full max-w-md">
+                <div class="bg-card-dark border border-border-dark rounded-2xl p-8 shadow-2xl">
+                    <div class="text-center mb-8">
+                        <div
+                            class="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-4">
+                            <span class="material-symbols-outlined text-[32px]">admin_panel_settings</span>
+                        </div>
+                        <h1 class="text-2xl font-bold text-white" data-i18n="admin.title">Yönetim Paneli</h1>
+                        <p class="text-sm text-text-muted mt-2">🔒 Server-side bcrypt authentication</p>
+                    </div>
+                    <form id="admin-login-form">
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-text-muted mb-2"
+                                data-i18n="admin.password">Şifre</label>
+                            <div class="relative">
+                                <div
+                                    class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-text-muted">
+                                    <span class="material-symbols-outlined text-[18px]">lock</span>
+                                </div>
+                                <input id="admin-password-input" type="password"
+                                    class="block w-full rounded-lg border border-border-dark bg-background-dark py-3 pl-10 pr-4 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                    placeholder="Yönetici şifresini girin" data-i18n="admin.passwordPlaceholder"
+                                    required />
+                            </div>
+                        </div>
+                        <button type="submit"
+                            class="w-full rounded-lg bg-primary px-6 py-3 text-base font-bold text-background-dark shadow-lg shadow-primary/20 hover:bg-orange-400 transition-all flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-[20px]">login</span>
+                            <span data-i18n="admin.login">Giriş Yap</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== ADMIN CONTENT ===================== -->
+        <div id="admin-content" class="hidden">
+            <!-- Admin Header -->
+            <section class="border-b border-border-dark bg-card-dark/30 py-6">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <span
+                                    class="material-symbols-outlined text-primary text-[22px]">admin_panel_settings</span>
+                            </div>
+                            <div>
+                                <h1 class="text-xl font-bold text-white" data-i18n="admin.title">Yönetim Paneli</h1>
+                                <p class="text-xs text-text-muted">🔒 Secure session active</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button onclick="handleImportJSON()"
+                                class="rounded-lg border border-border-dark bg-card-dark px-3 py-2 text-xs font-medium text-text-muted hover:text-white hover:border-primary/50 transition-all flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">upload</span>
+                                <span data-i18n="admin.importJson">JSON İçe Aktar</span>
+                            </button>
+                            <button onclick="handleExportJSON()"
+                                class="rounded-lg bg-primary/10 border border-primary/20 px-3 py-2 text-xs font-bold text-primary hover:bg-primary hover:text-background-dark transition-all flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">download</span>
+                                <span data-i18n="admin.export">JSON Dışa Aktar</span>
+                            </button>
+                            <button onclick="adminLogout()"
+                                class="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-all flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">logout</span>
+                                <span data-i18n="admin.logout">Çıkış Yap</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab Navigation -->
+            <section class="border-b border-border-dark bg-background-dark sticky top-16 z-40">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                    <div class="flex items-center gap-2 py-3">
+                        <button onclick="switchAdminTab('events')" data-tab="events"
+                            class="admin-tab-btn rounded-lg px-4 py-2 text-sm font-bold flex items-center gap-2 transition-all bg-primary text-background-dark">
+                            <span class="material-symbols-outlined text-[18px]">event</span>
+                            <span data-i18n="admin.tabEvents">Etkinlikler</span>
+                        </button>
+                        <button onclick="switchAdminTab('categories')" data-tab="categories"
+                            class="admin-tab-btn rounded-lg px-4 py-2 text-sm font-bold flex items-center gap-2 transition-all bg-card-dark text-text-muted border border-border-dark">
+                            <span class="material-symbols-outlined text-[18px]">category</span>
+                            <span data-i18n="admin.tabCategories">Kategoriler</span>
+                        </button>
+                        <button onclick="switchAdminTab('team')" data-tab="team"
+                            class="admin-tab-btn rounded-lg px-4 py-2 text-sm font-bold flex items-center gap-2 transition-all bg-card-dark text-text-muted border border-border-dark">
+                            <span class="material-symbols-outlined text-[18px]">groups</span>
+                            <span data-i18n="admin.tabTeam">Ekip Yönetimi</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================== EVENTS TAB ===================== -->
+            <div data-tab="events" class="admin-tab-panel">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                        <!-- Event Form (2 cols) -->
+                        <div class="lg:col-span-2">
+                            <h2 id="event-form-title" class="text-lg font-bold text-white mb-4 flex items-center gap-2"
+                                data-i18n="admin.createEvent">
+                                <span class="material-symbols-outlined text-primary text-[20px]">add_circle</span>
+                                Yeni Etkinlik Oluştur
+                            </h2>
+                            <form id="event-form"
+                                class="bg-card-dark border border-border-dark rounded-xl p-5 space-y-4">
+                                <!-- Title TR -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.eventTitleTr">Başlık (Türkçe)</label>
+                                    <input name="title_tr" type="text"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                        required />
+                                </div>
+                                <!-- Title EN -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.eventTitleEn">Başlık (İngilizce)</label>
+                                    <input name="title_en" type="text"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm" />
+                                </div>
+                                <!-- Description TR -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.eventDescTr">Açıklama (Türkçe)</label>
+                                    <textarea name="description_tr" rows="3"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm resize-none"
+                                        required></textarea>
+                                </div>
+                                <!-- Description EN -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.eventDescEn">Açıklama (İngilizce)</label>
+                                    <textarea name="description_en" rows="3"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm resize-none"></textarea>
+                                </div>
+                                <!-- Date & Time -->
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-xs font-medium text-text-muted mb-1"
+                                            data-i18n="admin.eventDate">Tarih</label>
+                                        <input name="event_date" type="date"
+                                            class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                            required />
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-text-muted mb-1"
+                                            data-i18n="admin.eventTime">Saat</label>
+                                        <input name="event_time" type="time"
+                                            class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white focus:border-primary focus:ring-1 focus:ring-primary text-sm" />
+                                    </div>
+                                </div>
+                                <!-- Category Visual Selector -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-2"
+                                        data-i18n="admin.eventCategory">Kategori</label>
+                                    <div id="category-selector-grid" class="grid grid-cols-2 gap-2">
+                                        <!-- Dynamically populated by loadCategorySelector() -->
+                                    </div>
+                                    <select name="category" class="hidden">
+                                        <option value="workshop" selected>Workshop</option>
+                                    </select>
+                                </div>
+                                <!-- Location -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.eventLocation">Konum</label>
+                                    <input name="location" type="text"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                        placeholder="Ör: Lab 404 veya Çevrimiçi" />
+                                </div>
+                                <!-- Image Section -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-2"
+                                        data-i18n="admin.eventImage">Etkinlik Görseli</label>
+                                    <!-- Drop Zone -->
+                                    <div id="event-image-drop" class="drop-zone rounded-lg p-6 text-center mb-2">
+                                        <span
+                                            class="material-symbols-outlined text-text-muted text-[32px] mb-1 block">cloud_upload</span>
+                                        <p class="text-xs text-text-muted" data-i18n="admin.eventImageDrop">Görseli
+                                            buraya sürükleyin veya tıklayın</p>
+                                    </div>
+                                    <!-- URL alternative -->
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <div class="flex-1 h-px bg-border-dark"></div>
+                                        <span class="text-[10px] text-text-muted uppercase"
+                                            data-i18n="admin.eventImageUpload">veya dosya yükle</span>
+                                        <div class="flex-1 h-px bg-border-dark"></div>
+                                    </div>
+                                    <input id="event-image-url" name="image_url" type="url"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-xs"
+                                        placeholder="https://..." />
+                                    <img id="event-image-preview"
+                                        class="hidden mt-2 w-full h-28 object-cover rounded-lg border border-border-dark"
+                                        alt="Preview" />
+                                </div>
+                                <!-- Event Link -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.eventLink">Etkinlik Linki (opsiyonel)</label>
+                                    <input name="event_link" type="url"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                        placeholder="https://..." />
+                                </div>
+                                <!-- Submit -->
+                                <div class="flex gap-2">
+                                    <button id="event-submit-btn" type="submit"
+                                        class="flex-1 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-background-dark shadow-lg shadow-primary/20 hover:bg-orange-400 transition-all flex items-center justify-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px]">save</span>
+                                        <span data-i18n="admin.save">Kaydet</span>
+                                    </button>
+                                    <button id="event-cancel-btn" type="button" onclick="handleCancelEventEdit()"
+                                        class="hidden rounded-lg border border-border-dark bg-card-dark px-4 py-3 text-sm font-medium text-text-muted hover:text-white transition-all flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[16px]">close</span>
+                                        <span data-i18n="admin.cancel">İptal</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Existing Events (3 cols) -->
+                        <div class="lg:col-span-3">
+                            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-[20px]">list</span>
+                                <span data-i18n="admin.existingEvents">Mevcut Etkinlikler</span>
+                            </h2>
+                            <div id="admin-events-list" class="space-y-3">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================== TEAM TAB ===================== -->
+            <div data-tab="team" class="admin-tab-panel hidden">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                        <!-- Team Form (2 cols) -->
+                        <div class="lg:col-span-2">
+                            <h2 id="team-form-title" class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-[20px]">person_add</span>
+                                <span data-i18n="admin.addMember">Yeni Üye Ekle</span>
+                            </h2>
+                            <form id="team-form"
+                                class="bg-card-dark border border-border-dark rounded-xl p-5 space-y-4">
+                                <!-- Name -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.memberName">Ad Soyad</label>
+                                    <input name="member_name" type="text"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                        required />
+                                </div>
+                                <!-- Role TR -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.memberRoleTr">Görev (Türkçe)</label>
+                                    <input name="role_tr" type="text"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                        placeholder="Ör: Başkan, Koordinatör..." />
+                                </div>
+                                <!-- Role EN -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.memberRoleEn">Görev (İngilizce)</label>
+                                    <input name="role_en" type="text"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                        placeholder="E.g. President, Coordinator..." />
+                                </div>
+                                <!-- Photo Upload -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-2"
+                                        data-i18n="admin.memberPhoto">Fotoğraf</label>
+                                    <div id="member-photo-drop" class="drop-zone rounded-lg p-6 text-center">
+                                        <span
+                                            class="material-symbols-outlined text-text-muted text-[32px] mb-1 block">add_a_photo</span>
+                                        <p class="text-xs text-text-muted" data-i18n="admin.eventImageDrop">Görseli
+                                            buraya sürükleyin veya tıklayın</p>
+                                    </div>
+                                    <img id="member-photo-preview"
+                                        class="hidden mt-2 w-20 h-20 mx-auto object-cover rounded-full border-2 border-primary/30"
+                                        alt="Preview" />
+                                </div>
+                                <!-- Submit -->
+                                <div class="flex gap-2">
+                                    <button id="team-submit-btn" type="submit"
+                                        class="flex-1 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-background-dark shadow-lg shadow-primary/20 hover:bg-orange-400 transition-all flex items-center justify-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px]">save</span>
+                                        <span data-i18n="admin.save">Kaydet</span>
+                                    </button>
+                                    <button id="team-cancel-btn" type="button" onclick="handleCancelMemberEdit()"
+                                        class="hidden rounded-lg border border-border-dark bg-card-dark px-4 py-3 text-sm font-medium text-text-muted hover:text-white transition-all flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[16px]">close</span>
+                                        <span data-i18n="admin.cancel">İptal</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Existing Team Members (3 cols) -->
+                        <div class="lg:col-span-3">
+                            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-[20px]">group</span>
+                                <span data-i18n="admin.existingMembers">Ekip Üyeleri</span>
+                            </h2>
+                            <div id="admin-team-list" class="space-y-3">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===================== CATEGORIES TAB ===================== -->
+            <div data-tab="categories" class="admin-tab-panel hidden">
+                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+                    <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                        <!-- Category Form (2 cols) -->
+                        <div class="lg:col-span-2">
+                            <h2 id="category-form-title"
+                                class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-[20px]">add_circle</span>
+                                <span data-i18n="admin.createCategory">Yeni Kategori Oluştur</span>
+                            </h2>
+                            <form id="category-form"
+                                class="bg-card-dark border border-border-dark rounded-xl p-5 space-y-4">
+                                <!-- Name TR -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.categoryNameTr">Kategori Adı (Türkçe)</label>
+                                    <input name="name_tr" type="text"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                        required />
+                                </div>
+                                <!-- Name EN -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.categoryNameEn">Kategori Adı (İngilizce)</label>
+                                    <input name="name_en" type="text"
+                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm" />
+                                </div>
+                                <!-- Icon -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-1"
+                                        data-i18n="admin.categoryIcon">İkon (Material Symbols)</label>
+                                    <div class="flex items-center gap-3">
+                                        <input name="icon" type="text" value="category"
+                                            class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                            placeholder="Ör: school, code, groups..." />
+                                        <span id="category-icon-preview"
+                                            class="material-symbols-outlined text-primary text-[28px]">category</span>
+                                    </div>
+                                </div>
+                                <!-- Color -->
+                                <div>
+                                    <label class="block text-xs font-medium text-text-muted mb-2"
+                                        data-i18n="admin.categoryColor">Renk</label>
+                                    <div class="flex flex-wrap gap-2" id="color-picker">
+                                        <button type="button" data-color="blue"
+                                            class="color-btn w-8 h-8 rounded-full bg-blue-500 border-2 border-blue-500 ring-2 ring-offset-2 ring-offset-card-dark ring-blue-500"
+                                            title="Blue"></button>
+                                        <button type="button" data-color="green"
+                                            class="color-btn w-8 h-8 rounded-full bg-green-500 border-2 border-transparent"
+                                            title="Green"></button>
+                                        <button type="button" data-color="pink"
+                                            class="color-btn w-8 h-8 rounded-full bg-pink-500 border-2 border-transparent"
+                                            title="Pink"></button>
+                                        <button type="button" data-color="purple"
+                                            class="color-btn w-8 h-8 rounded-full bg-purple-500 border-2 border-transparent"
+                                            title="Purple"></button>
+                                        <button type="button" data-color="red"
+                                            class="color-btn w-8 h-8 rounded-full bg-red-500 border-2 border-transparent"
+                                            title="Red"></button>
+                                        <button type="button" data-color="yellow"
+                                            class="color-btn w-8 h-8 rounded-full bg-yellow-500 border-2 border-transparent"
+                                            title="Yellow"></button>
+                                        <button type="button" data-color="cyan"
+                                            class="color-btn w-8 h-8 rounded-full bg-cyan-500 border-2 border-transparent"
+                                            title="Cyan"></button>
+                                        <button type="button" data-color="orange"
+                                            class="color-btn w-8 h-8 rounded-full bg-orange-500 border-2 border-transparent"
+                                            title="Orange"></button>
+                                        <button type="button" data-color="gray"
+                                            class="color-btn w-8 h-8 rounded-full bg-gray-500 border-2 border-transparent"
+                                            title="Gray"></button>
+                                    </div>
+                                    <input name="color" type="hidden" value="blue" />
+                                </div>
+                                <!-- Submit -->
+                                <div class="flex gap-2">
+                                    <button id="category-submit-btn" type="submit"
+                                        class="flex-1 rounded-lg bg-primary px-6 py-3 text-sm font-bold text-background-dark shadow-lg shadow-primary/20 hover:bg-orange-400 transition-all flex items-center justify-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px]">save</span>
+                                        <span data-i18n="admin.save">Kaydet</span>
+                                    </button>
+                                    <button id="category-cancel-btn" type="button" onclick="handleCancelCategoryEdit()"
+                                        class="hidden rounded-lg border border-border-dark bg-card-dark px-4 py-3 text-sm font-medium text-text-muted hover:text-white transition-all flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[16px]">close</span>
+                                        <span data-i18n="admin.cancel">İptal</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Existing Categories (3 cols) -->
+                        <div class="lg:col-span-3">
+                            <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-[20px]">list</span>
+                                <span data-i18n="admin.existingCategories">Mevcut Kategoriler</span>
+                            </h2>
+                            <div id="admin-categories-list" class="space-y-3">
+                                <!-- Dynamically populated -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script src="js/i18n.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/team.js"></script>
+    <script src="js/admin.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initAdmin();
+        });
+    </script>
+</body>
+
+</html>

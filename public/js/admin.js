@@ -1,0 +1,1127 @@
+/* ========================================
+   Gazi DOTT — Admin Panel Logic v3
+   Server-side auth, API-based CRUD, file upload
+   ========================================
+   All authentication and data operations now go through
+   the Express backend (/api/*). No secrets or data are
+   stored client-side.
+   ======================================== */
+
+// (ADMIN_AUTH_KEY removed — was dead code from old client-side auth)
+
+// Currently editing event/member/category
+let editingEventId = null;
+let editingMemberId = null;
+let editingCategoryId = null;
+// Current selected image (URL path from server)
+let currentEventImage = '';
+let currentMemberPhoto = '';
+// Current selected color for category
+let currentCategoryColor = 'blue';
+
+/* ========================================
+   Authentication (Server-Side)
+   ======================================== */
+
+/**
+ * Check if user is authenticated via server session
+ */
+async function isAdminAuthenticated() {
+    try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        return data.authenticated === true;
+    } catch (err) {
+        return false;
+    }
+}
+
+/**
+ * Login via server API
+ */
+async function adminLogin(password) {
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        const data = await response.json();
+        return data.success === true;
+    } catch (err) {
+        return false;
+    }
+}
+
+/**
+ * Logout via server API
+ */
+async function adminLogout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+        // Ignore
+    }
+    window.location.reload();
+}
+
+// (generateId removed — server generates IDs; was dead code)
+
+/* ========================================
+   Event CRUD (API-based)
+   ======================================== */
+
+async function addEvent(eventData) {
+    const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData)
+    });
+    if (!response.ok) throw new Error('Failed to create event');
+    invalidateEventsCache();
+    return await response.json();
+}
+
+async function updateEvent(id, data) {
+    const response = await fetch(`/api/events/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update event');
+    invalidateEventsCache();
+}
+
+async function deleteEvent(id) {
+    const response = await fetch(`/api/events/${id}`, {
+        method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete event');
+    invalidateEventsCache();
+}
+
+async function deletePastEvents() {
+    const response = await fetch('/api/events/past', {
+        method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete past events');
+    invalidateEventsCache();
+}
+
+/* ========================================
+   Category CRUD (API-based)
+   ======================================== */
+
+async function addCategory(data) {
+    const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to create category');
+    }
+    invalidateCategoriesCache();
+    return await response.json();
+}
+
+async function updateCategory(id, data) {
+    const response = await fetch(`/api/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to update category');
+    invalidateCategoriesCache();
+}
+
+async function deleteCategory(id) {
+    const response = await fetch(`/api/categories/${id}`, {
+        method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete category');
+    invalidateCategoriesCache();
+}
+
+/* ========================================
+   Image Upload Handling (Server-based)
+   ======================================== */
+
+/**
+ * Upload a file to the server and return the URL
+ */
+async function uploadImageFile(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+    });
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: 'Upload failed' }));
+        throw new Error(err.error || 'Upload failed');
+    }
+
+    const data = await response.json();
+    return data.url; // e.g. "/uploads/1234567890_abcd1234.jpg"
+}
+
+/**
+ * Setup drag-and-drop image upload zone
+ */
+function setupImageUpload(dropZoneId, previewId, onImageSet) {
+    const dropZone = document.getElementById(dropZoneId);
+    const preview = document.getElementById(previewId);
+    if (!dropZone) return;
+
+    // Drag events
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('border-primary', 'bg-primary/5');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('border-primary', 'bg-primary/5');
+        });
+    });
+
+    // Drop
+    dropZone.addEventListener('drop', async (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.startsWith('image/')) {
+            await handleImageFile(files[0], preview, onImageSet);
+        }
+    });
+
+    // Click to select
+    dropZone.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async (e) => {
+            if (e.target.files.length > 0) {
+                await handleImageFile(e.target.files[0], preview, onImageSet);
+            }
+        };
+        input.click();
+    });
+}
+
+/**
+ * Handle an image file — upload to server and show preview
+ */
+async function handleImageFile(file, previewEl, onImageSet) {
+    // Reject oversized files (2MB limit, enforced server-side too)
+    if (file.size > 2 * 1024 * 1024) {
+        showToast(t('admin.imageSizeWarning'), 'error');
+        return;
+    }
+
+    try {
+        // Show uploading state
+        if (previewEl) {
+            previewEl.classList.remove('hidden');
+            previewEl.style.opacity = '0.5';
+        }
+
+        // Upload to server
+        const url = await uploadImageFile(file);
+
+        if (previewEl) {
+            previewEl.src = url;
+            previewEl.style.opacity = '1';
+        }
+        if (onImageSet) onImageSet(url);
+    } catch (err) {
+        showToast(err.message || 'Image upload failed', 'error');
+        if (previewEl) {
+            previewEl.classList.add('hidden');
+            previewEl.style.opacity = '1';
+        }
+    }
+}
+
+/**
+ * Setup URL input that also updates preview
+ */
+function setupUrlInput(inputId, previewId, onImageSet) {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+    if (!input) return;
+
+    input.addEventListener('input', (e) => {
+        const url = e.target.value.trim();
+        if (preview) {
+            if (url) {
+                preview.src = url;
+                preview.classList.remove('hidden');
+                preview.onerror = () => preview.classList.add('hidden');
+            } else {
+                preview.classList.add('hidden');
+            }
+        }
+        if (onImageSet) onImageSet(url);
+    });
+}
+
+/* ========================================
+   Admin Tab Navigation
+   ======================================== */
+
+function switchAdminTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+        if (btn.dataset.tab === tabName) {
+            btn.classList.add('bg-primary', 'text-background-dark');
+            btn.classList.remove('bg-card-dark', 'text-text-muted', 'border-border-dark');
+        } else {
+            btn.classList.remove('bg-primary', 'text-background-dark');
+            btn.classList.add('bg-card-dark', 'text-text-muted', 'border-border-dark');
+        }
+    });
+
+    // Show/hide tab panels
+    document.querySelectorAll('.admin-tab-panel').forEach(panel => {
+        if (panel.dataset.tab === tabName) {
+            panel.classList.remove('hidden');
+        } else {
+            panel.classList.add('hidden');
+        }
+    });
+}
+
+/* ========================================
+   Render Admin Events List
+   ======================================== */
+
+async function renderAdminEvents() {
+    const container = document.getElementById('admin-events-list');
+    if (!container) return;
+
+    const events = await getEvents();
+    const now = new Date().getTime();
+
+    if (events.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12 text-text-muted">
+                <span class="material-symbols-outlined text-5xl mb-3 block opacity-50">event_busy</span>
+                <p class="text-lg" data-i18n="admin.noEvents">${t('admin.noEvents')}</p>
+            </div>`;
+        return;
+    }
+
+    // Separate upcoming and past
+    const upcoming = events.filter(e => new Date(e.date).getTime() >= now)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const past = events.filter(e => new Date(e.date).getTime() < now)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    let html = '';
+
+    // Upcoming section
+    if (upcoming.length > 0) {
+        html += `<div class="mb-6">
+            <h3 class="text-sm font-bold text-primary uppercase tracking-wider mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined text-[16px]">upcoming</span>
+                <span data-i18n="admin.upcomingEvents">${t('admin.upcomingEvents')}</span>
+                <span class="bg-primary/20 text-primary text-xs px-2 py-0.5 rounded-full">${upcoming.length}</span>
+            </h3>
+            <div class="space-y-3">${upcoming.map(e => renderAdminEventCard(e, true)).join('')}</div>
+        </div>`;
+    }
+
+    // Past section
+    if (past.length > 0) {
+        html += `<div>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-text-muted uppercase tracking-wider flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">history</span>
+                    <span data-i18n="admin.pastEvents">${t('admin.pastEvents')}</span>
+                    <span class="bg-border-dark text-text-muted text-xs px-2 py-0.5 rounded-full">${past.length}</span>
+                </h3>
+                <button onclick="handleDeletePastEvents()"
+                    class="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors">
+                    <span class="material-symbols-outlined text-[14px]">delete_sweep</span>
+                    <span data-i18n="admin.deletePastEvents">${t('admin.deletePastEvents')}</span>
+                </button>
+            </div>
+            <div class="space-y-3">${past.map(e => renderAdminEventCard(e, false)).join('')}</div>
+        </div>`;
+    }
+
+    container.innerHTML = html;
+}
+
+/**
+ * Render a single admin event card
+ */
+function renderAdminEventCard(event, isUpcoming) {
+    const statusDot = isUpcoming
+        ? '<span class="h-2 w-2 rounded-full bg-green-500 flex-shrink-0"></span>'
+        : '<span class="h-2 w-2 rounded-full bg-gray-500 flex-shrink-0"></span>';
+
+    const safeTitle = escapeHTML(event.title_tr || event.title_en);
+    const safeImage = escapeHTML(event.image);
+    const safeTime = escapeHTML(event.time);
+    const safeLocation = escapeHTML(event.location);
+    const safeId = escapeHTML(event.id);
+
+    return `
+    <div class="bg-card-dark border border-border-dark rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 ${!isUpcoming ? 'opacity-60' : ''} hover:border-border-dark/80 transition-all">
+        <div class="flex items-start gap-3 flex-1 min-w-0">
+            ${event.image
+            ? `<img src="${safeImage}" alt="" class="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-border-dark" onerror="this.style.display='none'" />`
+            : `<div class="w-14 h-14 rounded-lg bg-border-dark/50 flex-shrink-0 flex items-center justify-center"><span class="material-symbols-outlined text-text-muted text-[20px]">image</span></div>`
+        }
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 mb-0.5">
+                    ${statusDot}
+                    <h4 class="font-bold text-white truncate text-sm">${safeTitle}</h4>
+                </div>
+                <p class="text-xs text-text-muted">${formatDate(event.date)} ${safeTime ? '• ' + safeTime : ''}</p>
+                <div class="flex items-center gap-2 mt-1">
+                    ${getCategoryBadge(event.category)}
+                    ${safeLocation ? `<span class="text-xs text-text-muted">${safeLocation}</span>` : ''}
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <button onclick="handleEditEvent('${safeId}')"
+                class="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                title="${t('admin.edit')}">
+                <span class="material-symbols-outlined text-[18px]">edit</span>
+            </button>
+            <button onclick="handleDeleteEvent('${safeId}')"
+                class="p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                title="${t('admin.delete')}">
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+            </button>
+        </div>
+    </div>`;
+}
+
+/* ========================================
+   Render Admin Team List
+   ======================================== */
+
+async function renderAdminTeam() {
+    const container = document.getElementById('admin-team-list');
+    if (!container) return;
+
+    const members = await getTeamMembers();
+    members.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    if (members.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12 text-text-muted">
+                <span class="material-symbols-outlined text-5xl mb-3 block opacity-50">group_off</span>
+                <p class="text-lg" data-i18n="admin.noMembers">${t('admin.noMembers')}</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = members.map((member, idx) => {
+        const safeName = escapeHTML(member.name);
+        const safePhoto = escapeHTML(member.photo);
+        const safeRole = escapeHTML(getMemberRole(member));
+        const safeId = escapeHTML(member.id);
+
+        return `
+        <div class="bg-card-dark border border-border-dark rounded-xl p-4 flex items-center gap-4 hover:border-border-dark/80 transition-all">
+            ${member.photo
+                ? `<img src="${safePhoto}" alt="" class="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-border-dark" onerror="this.style.display='none'" />`
+                : `<div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex-shrink-0 flex items-center justify-center border border-primary/20"><span class="material-symbols-outlined text-primary text-[20px]">person</span></div>`
+            }
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-white truncate text-sm">${safeName}</h4>
+                <p class="text-xs text-primary">${safeRole}</p>
+            </div>
+            <div class="flex items-center gap-1 flex-shrink-0">
+                <button onclick="handleMoveTeamMember('${safeId}', 'up')"
+                    class="p-1.5 rounded-lg hover:bg-card-dark text-text-muted hover:text-white transition-colors ${idx === 0 ? 'opacity-30 pointer-events-none' : ''}"
+                    title="Move up">
+                    <span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+                </button>
+                <button onclick="handleMoveTeamMember('${safeId}', 'down')"
+                    class="p-1.5 rounded-lg hover:bg-card-dark text-text-muted hover:text-white transition-colors ${idx === members.length - 1 ? 'opacity-30 pointer-events-none' : ''}"
+                    title="Move down">
+                    <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+                </button>
+                <button onclick="handleEditMember('${safeId}')"
+                    class="p-1.5 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                    title="${t('admin.edit')}">
+                    <span class="material-symbols-outlined text-[16px]">edit</span>
+                </button>
+                <button onclick="handleDeleteMember('${safeId}')"
+                    class="p-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                    title="${t('admin.delete')}">
+                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ========================================
+   Event Handlers
+   ======================================== */
+
+async function handleEditEvent(id) {
+    const events = await getEvents();
+    const event = events.find(e => e.id === id);
+    if (!event) return;
+
+    editingEventId = id;
+    const form = document.getElementById('event-form');
+    if (!form) return;
+
+    // Populate form
+    form.title_tr.value = event.title_tr || '';
+    form.title_en.value = event.title_en || '';
+    form.description_tr.value = event.description_tr || '';
+    form.description_en.value = event.description_en || '';
+    form.event_date.value = event.date || '';
+    form.event_time.value = event.time || '';
+    form.category.value = event.category || 'workshop';
+    form.location.value = event.location || '';
+    form.image_url.value = (event.image && !event.image.startsWith('data:')) ? event.image : '';
+    form.event_link.value = event.link || '';
+
+    // Set image
+    currentEventImage = event.image || '';
+    const preview = document.getElementById('event-image-preview');
+    if (preview && currentEventImage) {
+        preview.src = currentEventImage;
+        preview.classList.remove('hidden');
+    }
+
+    // Update form title and buttons
+    const formTitle = document.getElementById('event-form-title');
+    const submitBtn = document.getElementById('event-submit-btn');
+    const cancelBtn = document.getElementById('event-cancel-btn');
+    if (formTitle) formTitle.setAttribute('data-i18n', 'admin.editEvent');
+    if (formTitle) formTitle.textContent = t('admin.editEvent');
+    if (submitBtn) submitBtn.querySelector('[data-i18n]').textContent = t('admin.update');
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+    // Update category visual selector
+    updateCategorySelector(event.category);
+
+    // Scroll to form
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function handleCancelEventEdit() {
+    editingEventId = null;
+    currentEventImage = '';
+    const form = document.getElementById('event-form');
+    if (form) form.reset();
+
+    const preview = document.getElementById('event-image-preview');
+    if (preview) preview.classList.add('hidden');
+
+    const formTitle = document.getElementById('event-form-title');
+    const submitBtn = document.getElementById('event-submit-btn');
+    const cancelBtn = document.getElementById('event-cancel-btn');
+    if (formTitle) formTitle.setAttribute('data-i18n', 'admin.createEvent');
+    if (formTitle) formTitle.textContent = t('admin.createEvent');
+    if (submitBtn) submitBtn.querySelector('[data-i18n]').textContent = t('admin.save');
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+
+    updateCategorySelector('workshop');
+}
+
+async function handleDeleteEvent(id) {
+    if (confirm(currentLang === 'tr' ? 'Bu etkinliği silmek istediğinize emin misiniz?' : 'Are you sure you want to delete this event?')) {
+        await deleteEvent(id);
+        await renderAdminEvents();
+        showToast(t('admin.eventDeleted'), 'success');
+        if (editingEventId === id) handleCancelEventEdit();
+    }
+}
+
+async function handleDeletePastEvents() {
+    if (confirm(currentLang === 'tr' ? 'Tüm geçmiş etkinlikleri silmek istediğinize emin misiniz?' : 'Are you sure you want to delete all past events?')) {
+        await deletePastEvents();
+        await renderAdminEvents();
+        showToast(t('admin.eventDeleted'), 'success');
+    }
+}
+
+async function handleEventFormSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+
+    const eventData = {
+        title_tr: form.title_tr.value.trim(),
+        title_en: form.title_en.value.trim(),
+        description_tr: form.description_tr.value.trim(),
+        description_en: form.description_en.value.trim(),
+        date: form.event_date.value,
+        time: form.event_time.value,
+        category: form.category.value,
+        location: form.location.value.trim(),
+        image: currentEventImage || form.image_url.value.trim(),
+        link: form.event_link.value.trim(),
+    };
+
+    if (!eventData.title_tr && !eventData.title_en) {
+        showToast(currentLang === 'tr' ? 'Lütfen en az bir dilde başlık girin.' : 'Please enter a title in at least one language.', 'error');
+        return;
+    }
+    if (!eventData.date) {
+        showToast(currentLang === 'tr' ? 'Lütfen tarih seçin.' : 'Please select a date.', 'error');
+        return;
+    }
+
+    try {
+        if (editingEventId) {
+            await updateEvent(editingEventId, eventData);
+            showToast(t('admin.eventUpdated'), 'success');
+            handleCancelEventEdit();
+        } else {
+            await addEvent(eventData);
+            showToast(t('admin.eventSaved'), 'success');
+        }
+
+        form.reset();
+        currentEventImage = '';
+        const preview = document.getElementById('event-image-preview');
+        if (preview) preview.classList.add('hidden');
+        await renderAdminEvents();
+    } catch (err) {
+        showToast(currentLang === 'tr' ? 'İşlem başarısız oldu.' : 'Operation failed.', 'error');
+    }
+}
+
+/* ========================================
+   Team Handlers
+   ======================================== */
+
+async function handleEditMember(id) {
+    const members = await getTeamMembers();
+    const member = members.find(m => m.id === id);
+    if (!member) return;
+
+    editingMemberId = id;
+    const form = document.getElementById('team-form');
+    if (!form) return;
+
+    form.member_name.value = member.name || '';
+    form.role_tr.value = member.role_tr || '';
+    form.role_en.value = member.role_en || '';
+
+    currentMemberPhoto = member.photo || '';
+    const preview = document.getElementById('member-photo-preview');
+    if (preview && currentMemberPhoto) {
+        preview.src = currentMemberPhoto;
+        preview.classList.remove('hidden');
+    }
+
+    const formTitle = document.getElementById('team-form-title');
+    const submitBtn = document.getElementById('team-submit-btn');
+    const cancelBtn = document.getElementById('team-cancel-btn');
+    if (formTitle) formTitle.textContent = t('admin.editMember');
+    if (submitBtn) submitBtn.querySelector('[data-i18n]').textContent = t('admin.update');
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function handleCancelMemberEdit() {
+    editingMemberId = null;
+    currentMemberPhoto = '';
+    const form = document.getElementById('team-form');
+    if (form) form.reset();
+
+    const preview = document.getElementById('member-photo-preview');
+    if (preview) preview.classList.add('hidden');
+
+    const formTitle = document.getElementById('team-form-title');
+    const submitBtn = document.getElementById('team-submit-btn');
+    const cancelBtn = document.getElementById('team-cancel-btn');
+    if (formTitle) formTitle.textContent = t('admin.addMember');
+    if (submitBtn) submitBtn.querySelector('[data-i18n]').textContent = t('admin.save');
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+}
+
+async function handleDeleteMember(id) {
+    if (confirm(currentLang === 'tr' ? 'Bu üyeyi silmek istediğinize emin misiniz?' : 'Are you sure you want to delete this member?')) {
+        await deleteTeamMember(id);
+        await renderAdminTeam();
+        showToast(t('admin.memberDeleted'), 'success');
+        if (editingMemberId === id) handleCancelMemberEdit();
+    }
+}
+
+async function handleMoveTeamMember(id, direction) {
+    await moveTeamMember(id, direction);
+    await renderAdminTeam();
+}
+
+async function handleTeamFormSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+
+    const memberData = {
+        name: form.member_name.value.trim(),
+        role_tr: form.role_tr.value.trim(),
+        role_en: form.role_en.value.trim(),
+        photo: currentMemberPhoto,
+    };
+
+    if (!memberData.name) {
+        showToast(currentLang === 'tr' ? 'Lütfen ad soyad girin.' : 'Please enter a name.', 'error');
+        return;
+    }
+
+    try {
+        if (editingMemberId) {
+            await updateTeamMember(editingMemberId, memberData);
+            showToast(t('admin.memberUpdated'), 'success');
+            handleCancelMemberEdit();
+        } else {
+            await addTeamMember(memberData);
+            showToast(t('admin.memberSaved'), 'success');
+        }
+
+        form.reset();
+        currentMemberPhoto = '';
+        const preview = document.getElementById('member-photo-preview');
+        if (preview) preview.classList.add('hidden');
+        await renderAdminTeam();
+    } catch (err) {
+        showToast(currentLang === 'tr' ? 'İşlem başarısız oldu.' : 'Operation failed.', 'error');
+    }
+}
+
+/* ========================================
+   Category Visual Selector
+   ======================================== */
+
+function updateCategorySelector(category) {
+    document.querySelectorAll('.category-card').forEach(card => {
+        if (card.dataset.category === category) {
+            card.classList.add('border-primary', 'bg-primary/10');
+            card.classList.remove('border-border-dark');
+        } else {
+            card.classList.remove('border-primary', 'bg-primary/10');
+            card.classList.add('border-border-dark');
+        }
+    });
+    // Update hidden select
+    const select = document.querySelector('select[name="category"]');
+    if (select) select.value = category;
+}
+
+/**
+ * Load category selector cards dynamically from API
+ */
+async function loadCategorySelector() {
+    const grid = document.getElementById('category-selector-grid');
+    const select = document.querySelector('select[name="category"]');
+    if (!grid) return;
+
+    const categories = await getCategories();
+    if (categories.length === 0) return;
+
+    const iconColorMap = COLOR_CONFIG.iconColor;
+
+    grid.innerHTML = categories.map((cat, idx) => {
+        const label = currentLang === 'tr' ? (cat.name_tr || cat.name_en) : (cat.name_en || cat.name_tr);
+        const iconClass = iconColorMap[cat.color] || 'text-gray-400';
+        const isFirst = idx === 0;
+        return `<div data-category="${escapeHTML(cat.id)}"
+            class="category-card border ${isFirst ? 'border-primary bg-primary/10' : 'border-border-dark'} rounded-lg p-3 flex items-center gap-2 cursor-pointer transition-all hover:bg-primary/15">
+            <span class="material-symbols-outlined ${iconClass} text-[20px]">${escapeHTML(cat.icon || 'category')}</span>
+            <span class="text-sm text-white font-medium">${escapeHTML(label)}</span>
+        </div>`;
+    }).join('');
+
+    // Update hidden select
+    if (select) {
+        select.innerHTML = categories.map((cat, idx) =>
+            `<option value="${escapeHTML(cat.id)}" ${idx === 0 ? 'selected' : ''}>${escapeHTML(cat.name_en || cat.name_tr)}</option>`
+        ).join('');
+    }
+
+    // Re-attach click listeners
+    grid.querySelectorAll('.category-card').forEach(card => {
+        card.addEventListener('click', () => {
+            updateCategorySelector(card.dataset.category);
+        });
+    });
+}
+
+/* ========================================
+   Render Admin Categories List
+   ======================================== */
+
+async function renderAdminCategories() {
+    const container = document.getElementById('admin-categories-list');
+    if (!container) return;
+
+    const categories = await getCategories();
+
+    if (categories.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-12 text-text-muted">
+                <span class="material-symbols-outlined text-5xl mb-3 block opacity-50">category</span>
+                <p class="text-lg" data-i18n="admin.noCategories">${t('admin.noCategories')}</p>
+            </div>`;
+        return;
+    }
+
+    const iconColorMap = COLOR_CONFIG.iconColor;
+    const bgColorMap = COLOR_CONFIG.bgColor;
+
+    container.innerHTML = categories.map(cat => {
+        const label = currentLang === 'tr' ? (cat.name_tr || cat.name_en) : (cat.name_en || cat.name_tr);
+        const secondLabel = currentLang === 'tr' ? (cat.name_en || '') : (cat.name_tr || '');
+        const iconClass = iconColorMap[cat.color] || 'text-gray-400';
+        const bgClass = bgColorMap[cat.color] || 'bg-gray-500';
+        const safeId = escapeHTML(cat.id);
+
+        return `
+        <div class="bg-card-dark border border-border-dark rounded-xl p-4 flex items-center gap-4 hover:border-border-dark/80 transition-all">
+            <div class="w-10 h-10 rounded-lg ${bgClass}/20 flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined ${iconClass} text-[22px]">${escapeHTML(cat.icon || 'category')}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h4 class="font-bold text-white text-sm">${escapeHTML(label)}</h4>
+                ${secondLabel ? `<p class="text-xs text-text-muted">${escapeHTML(secondLabel)}</p>` : ''}
+                <p class="text-[10px] text-text-muted/60 font-mono mt-0.5">ID: ${safeId}</p>
+            </div>
+            <div class="w-4 h-4 rounded-full ${bgClass} flex-shrink-0"></div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <button onclick="handleEditCategory('${safeId}')"
+                    class="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                    title="${t('admin.edit')}">
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+                <button onclick="handleDeleteCategory('${safeId}')"
+                    class="p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                    title="${t('admin.delete')}">
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ========================================
+   Category Handlers
+   ======================================== */
+
+async function handleEditCategory(id) {
+    const categories = await getCategories();
+    const cat = categories.find(c => c.id === id);
+    if (!cat) return;
+
+    editingCategoryId = id;
+    const form = document.getElementById('category-form');
+    if (!form) return;
+
+    form.name_tr.value = cat.name_tr || '';
+    form.name_en.value = cat.name_en || '';
+    form.icon.value = cat.icon || 'category';
+    form.color.value = cat.color || 'blue';
+    currentCategoryColor = cat.color || 'blue';
+
+    // Update icon preview
+    const iconPreview = document.getElementById('category-icon-preview');
+    if (iconPreview) iconPreview.textContent = cat.icon || 'category';
+
+    // Update color picker
+    updateColorPicker(cat.color || 'blue');
+
+    const formTitle = document.getElementById('category-form-title');
+    const submitBtn = document.getElementById('category-submit-btn');
+    const cancelBtn = document.getElementById('category-cancel-btn');
+    if (formTitle) formTitle.querySelector('[data-i18n]').textContent = t('admin.editCategory');
+    if (submitBtn) submitBtn.querySelector('[data-i18n]').textContent = t('admin.update');
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function handleCancelCategoryEdit() {
+    editingCategoryId = null;
+    currentCategoryColor = 'blue';
+    const form = document.getElementById('category-form');
+    if (form) form.reset();
+    form.icon.value = 'category';
+    form.color.value = 'blue';
+
+    const iconPreview = document.getElementById('category-icon-preview');
+    if (iconPreview) iconPreview.textContent = 'category';
+
+    updateColorPicker('blue');
+
+    const formTitle = document.getElementById('category-form-title');
+    const submitBtn = document.getElementById('category-submit-btn');
+    const cancelBtn = document.getElementById('category-cancel-btn');
+    if (formTitle) formTitle.querySelector('[data-i18n]').textContent = t('admin.createCategory');
+    if (submitBtn) submitBtn.querySelector('[data-i18n]').textContent = t('admin.save');
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+}
+
+async function handleDeleteCategory(id) {
+    if (confirm(currentLang === 'tr' ? 'Bu kategoriyi silmek istediğinize emin misiniz?' : 'Are you sure you want to delete this category?')) {
+        try {
+            await deleteCategory(id);
+            await renderAdminCategories();
+            await loadCategorySelector();
+            showToast(t('admin.categoryDeleted'), 'success');
+            if (editingCategoryId === id) handleCancelCategoryEdit();
+        } catch (err) {
+            showToast(err.message || 'Delete failed', 'error');
+        }
+    }
+}
+
+async function handleCategoryFormSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+
+    const catData = {
+        name_tr: form.name_tr.value.trim(),
+        name_en: form.name_en.value.trim(),
+        icon: form.icon.value.trim() || 'category',
+        color: form.color.value || 'blue',
+    };
+
+    if (!catData.name_tr && !catData.name_en) {
+        showToast(currentLang === 'tr' ? 'Lütfen en az bir dilde kategori adı girin.' : 'Please enter a category name in at least one language.', 'error');
+        return;
+    }
+
+    try {
+        if (editingCategoryId) {
+            await updateCategory(editingCategoryId, catData);
+            showToast(t('admin.categoryUpdated'), 'success');
+            handleCancelCategoryEdit();
+        } else {
+            await addCategory(catData);
+            showToast(t('admin.categorySaved'), 'success');
+        }
+
+        form.reset();
+        form.icon.value = 'category';
+        form.color.value = 'blue';
+        currentCategoryColor = 'blue';
+        const iconPreview = document.getElementById('category-icon-preview');
+        if (iconPreview) iconPreview.textContent = 'category';
+        updateColorPicker('blue');
+        await renderAdminCategories();
+        await loadCategorySelector();
+    } catch (err) {
+        showToast(err.message || (currentLang === 'tr' ? 'İşlem başarısız oldu.' : 'Operation failed.'), 'error');
+    }
+}
+
+/**
+ * Update color picker visual state
+ */
+function updateColorPicker(color) {
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        if (btn.dataset.color === color) {
+            btn.className = `color-btn w-8 h-8 rounded-full bg-${color}-500 border-2 border-${color}-500 ring-2 ring-offset-2 ring-offset-card-dark ring-${color}-500`;
+        } else {
+            btn.className = `color-btn w-8 h-8 rounded-full bg-${btn.dataset.color}-500 border-2 border-transparent`;
+        }
+    });
+}
+
+/* ========================================
+   JSON Export / Import (Server-based)
+   ======================================== */
+
+async function handleExportJSON() {
+    try {
+        const response = await fetch('/api/data/export');
+        if (!response.ok) throw new Error('Export failed');
+        const data = await response.json();
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'dott-data.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast(currentLang === 'tr' ? 'JSON dosyası indirildi!' : 'JSON file downloaded!', 'success');
+    } catch (err) {
+        showToast(currentLang === 'tr' ? 'Dışa aktarma başarısız!' : 'Export failed!', 'error');
+    }
+}
+
+async function handleImportJSON() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Reject very large files (>2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            showToast(currentLang === 'tr' ? 'Dosya çok büyük (maks 2MB)!' : 'File too large (max 2MB)!', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                const response = await fetch('/api/data/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || 'Import failed');
+                }
+
+                invalidateEventsCache();
+                invalidateTeamCache();
+                await renderAdminEvents();
+                await renderAdminTeam();
+                showToast(currentLang === 'tr' ? 'Veriler başarıyla içe aktarıldı!' : 'Data imported successfully!', 'success');
+            } catch (err) {
+                showToast(currentLang === 'tr' ? 'Geçersiz JSON dosyası!' : 'Invalid JSON file!', 'error');
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+/* ========================================
+   Initialize Admin Panel
+   ======================================== */
+
+async function initAdmin() {
+    const loginScreen = document.getElementById('admin-login-screen');
+    const adminContent = document.getElementById('admin-content');
+
+    if (await isAdminAuthenticated()) {
+        loginScreen.classList.add('hidden');
+        adminContent.classList.remove('hidden');
+        // Pre-warm all caches in parallel (single round-trip batch)
+        await Promise.all([getCategories(), getEvents(), getTeamMembers()]);
+        // Render views in parallel (data is cached, no network calls)
+        await Promise.all([
+            loadCategorySelector(),
+            renderAdminEvents(),
+            renderAdminTeam(),
+            renderAdminCategories()
+        ]);
+        setupAdminForms();
+    } else {
+        loginScreen.classList.remove('hidden');
+        adminContent.classList.add('hidden');
+    }
+
+    // Login form
+    const loginForm = document.getElementById('admin-login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('admin-password-input').value;
+            const success = await adminLogin(password);
+            if (success) {
+                loginScreen.classList.add('hidden');
+                adminContent.classList.remove('hidden');
+                await Promise.all([getCategories(), getEvents(), getTeamMembers()]);
+                await Promise.all([
+                    loadCategorySelector(),
+                    renderAdminEvents(),
+                    renderAdminTeam(),
+                    renderAdminCategories()
+                ]);
+                setupAdminForms();
+            } else {
+                showToast(t('admin.wrongPassword'), 'error');
+                document.getElementById('admin-password-input').value = '';
+                // Shake animation
+                const card = loginForm.closest('.bg-card-dark');
+                if (card) {
+                    card.style.animation = 'shake 0.5s ease';
+                    setTimeout(() => card.style.animation = '', 500);
+                }
+            }
+        });
+    }
+}
+
+function setupAdminForms() {
+    // Event form
+    const eventForm = document.getElementById('event-form');
+    if (eventForm) {
+        eventForm.addEventListener('submit', handleEventFormSubmit);
+    }
+
+    // Team form
+    const teamForm = document.getElementById('team-form');
+    if (teamForm) {
+        teamForm.addEventListener('submit', handleTeamFormSubmit);
+    }
+
+    // Image upload for events
+    setupImageUpload('event-image-drop', 'event-image-preview', (img) => {
+        currentEventImage = img;
+    });
+    setupUrlInput('event-image-url', 'event-image-preview', (url) => {
+        currentEventImage = url;
+    });
+
+    // Photo upload for team
+    setupImageUpload('member-photo-drop', 'member-photo-preview', (img) => {
+        currentMemberPhoto = img;
+    });
+
+    // Category cards (event form)
+    document.querySelectorAll('.category-card').forEach(card => {
+        card.addEventListener('click', () => {
+            updateCategorySelector(card.dataset.category);
+        });
+    });
+
+    // Category form
+    const categoryForm = document.getElementById('category-form');
+    if (categoryForm) {
+        categoryForm.addEventListener('submit', handleCategoryFormSubmit);
+    }
+
+    // Color picker
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const color = btn.dataset.color;
+            currentCategoryColor = color;
+            const colorInput = document.querySelector('input[name="color"]');
+            if (colorInput) colorInput.value = color;
+            updateColorPicker(color);
+        });
+    });
+
+    // Icon preview
+    const iconInput = document.querySelector('#category-form input[name="icon"]');
+    const iconPreview = document.getElementById('category-icon-preview');
+    if (iconInput && iconPreview) {
+        iconInput.addEventListener('input', () => {
+            iconPreview.textContent = iconInput.value.trim() || 'category';
+        });
+    }
+}

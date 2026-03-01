@@ -1,0 +1,178 @@
+/* ========================================
+   Gazi DOTT — Digital Game Design Club
+   Custom Styles
+   ======================================== */
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #231a10;
+}
+::-webkit-scrollbar-thumb {
+    background: #493622;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #f48c25;
+}
+
+/* Body */
+body {
+    font-family: "Space Grotesk", sans-serif;
+}
+
+/* Mobile menu overlay */
+#mobile-menu-overlay {
+    transition: opacity 0.3s ease;
+}
+#mobile-menu-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#mobile-menu-panel {
+    transition: transform 0.3s ease;
+}
+#mobile-menu-panel.translate-x-full {
+    transform: translateX(100%);
+}
+
+/* Fade-in animation for page load */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.animate-fade-in-up-delay-1 {
+    animation: fadeInUp 0.6s ease 0.1s forwards;
+    opacity: 0;
+}
+.animate-fade-in-up-delay-2 {
+    animation: fadeInUp 0.6s ease 0.2s forwards;
+    opacity: 0;
+}
+.animate-fade-in-up-delay-3 {
+    animation: fadeInUp 0.6s ease 0.3s forwards;
+    opacity: 0;
+}
+
+/* Pulse glow for countdown */
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(244, 140, 37, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(244, 140, 37, 0.4);
+    }
+}
+
+.countdown-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Card hover lift */
+.card-hover {
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.card-hover:hover {
+    transform: translateY(-4px);
+}
+
+/* Language switcher */
+.lang-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    background: #342618;
+    border: 1px solid #493622;
+    border-radius: 9999px;
+    padding: 2px;
+    cursor: pointer;
+}
+
+.lang-switch button {
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+    color: #cbad90;
+    cursor: pointer;
+}
+
+.lang-switch button.active {
+    background: #f48c25;
+    color: #231a10;
+}
+
+/* Admin panel specific */
+.admin-login-overlay {
+    backdrop-filter: blur(8px);
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 24px;
+    border-radius: 12px;
+    background: #342618;
+    border: 1px solid #493622;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 9999;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast.success {
+    border-color: #22c55e;
+}
+
+.toast.error {
+    border-color: #ef4444;
+}
+
+/* No scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Skeleton loading */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.skeleton {
+    background: linear-gradient(90deg, #342618 25%, #493622 50%, #342618 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+}

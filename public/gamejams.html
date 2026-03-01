@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html class="dark" lang="tr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Game Jam'ler — Gazi DOTT</title>
+    <meta name="description" content="Gazi DOTT game jam'leri — 48 saat, sonsuz yaratıcılık!" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <link href="css/style.css" rel="stylesheet" />
+    <script src="js/tailwind-config.js"></script>
+</head>
+
+<body
+    class="bg-background-dark text-slate-100 min-h-screen flex flex-col overflow-x-hidden antialiased selection:bg-primary selection:text-white">
+
+    <div id="navbar-placeholder"></div>
+
+    <main class="flex-grow">
+        <!-- Hero with Countdown -->
+        <section class="relative border-b border-border-dark bg-background-dark py-16 sm:py-24">
+            <div class="absolute inset-0 overflow-hidden">
+                <div
+                    class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=2070&q=80')] bg-cover bg-center opacity-10">
+                </div>
+                <div
+                    class="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/80 to-transparent">
+                </div>
+            </div>
+            <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+                <h1 class="font-display text-4xl font-black tracking-tight text-white sm:text-6xl mb-4">
+                    <span data-i18n="gamejams.title">Game Jam'ler</span>
+                </h1>
+                <p class="mx-auto max-w-2xl text-lg text-text-muted mb-10" data-i18n="gamejams.subtitle">
+                    48 saat, sonsuz yaratıcılık. Oyun geliştirme maratonlarımıza katıl!
+                </p>
+
+                <!-- Next Jam Info -->
+                <div class="mb-4">
+                    <p class="text-xs uppercase tracking-widest text-primary font-bold mb-2"
+                        data-i18n="gamejams.nextJam">Sonraki Game Jam</p>
+                    <p id="countdown-title" class="text-2xl font-bold text-white mb-1"></p>
+                    <p id="countdown-desc" class="text-sm text-text-muted mb-8 max-w-xl mx-auto"></p>
+                </div>
+
+                <!-- Countdown -->
+                <div class="flex flex-wrap justify-center gap-4 sm:gap-8 mb-10">
+                    <div class="flex flex-col items-center">
+                        <div
+                            class="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl border border-border-dark bg-card-dark/80 backdrop-blur shadow-lg countdown-glow">
+                            <span id="countdown-days"
+                                class="font-display text-3xl sm:text-4xl font-bold text-white">--</span>
+                        </div>
+                        <span class="mt-3 text-xs font-medium uppercase tracking-wider text-text-muted"
+                            data-i18n="gamejams.days">Gün</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div
+                            class="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl border border-border-dark bg-card-dark/80 backdrop-blur shadow-lg countdown-glow">
+                            <span id="countdown-hours"
+                                class="font-display text-3xl sm:text-4xl font-bold text-white">--</span>
+                        </div>
+                        <span class="mt-3 text-xs font-medium uppercase tracking-wider text-text-muted"
+                            data-i18n="gamejams.hours">Saat</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div
+                            class="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl border border-border-dark bg-card-dark/80 backdrop-blur shadow-lg countdown-glow">
+                            <span id="countdown-minutes"
+                                class="font-display text-3xl sm:text-4xl font-bold text-white">--</span>
+                        </div>
+                        <span class="mt-3 text-xs font-medium uppercase tracking-wider text-text-muted"
+                            data-i18n="gamejams.minutes">Dakika</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div
+                            class="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-2xl border border-border-dark bg-card-dark/80 backdrop-blur shadow-lg countdown-glow">
+                            <span id="countdown-seconds"
+                                class="font-display text-3xl sm:text-4xl font-bold text-primary">--</span>
+                        </div>
+                        <span class="mt-3 text-xs font-medium uppercase tracking-wider text-primary"
+                            data-i18n="gamejams.seconds">Saniye</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upcoming Game Jams -->
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+            <div id="gamejams-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Past Game Jams -->
+            <div class="mt-16 pt-10 border-t border-border-dark">
+                <h2 class="text-xl font-bold text-text-muted mb-6" data-i18n="gamejams.pastJams">Geçmiş Game Jam'ler
+                </h2>
+                <div id="past-jams-list" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="footer-placeholder"></div>
+
+    <script src="js/i18n.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/countdown.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await renderGameJams();
+            await initCountdownFromEvents();
+        });
+    </script>
+</body>
+
+</html>
