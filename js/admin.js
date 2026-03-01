@@ -958,85 +958,85 @@ function updateColorPicker(color) {
 }
 
 /* ========================================
-   JSON Export / Import (Client-side)
+   GitHub Synchronization (Option 1)
    ======================================== */
 
-async function handleExportJSON() {
+const GITHUB_REPO = 'BatuhanCanal/DottWebsite';
+const GITHUB_BRANCH = 'static';
+const GITHUB_TOKEN_KEY = 'dott-github-token';
+
+async function handleGitHubSync() {
+    const token = localStorage.getItem(GITHUB_TOKEN_KEY);
+    if (!token) {
+        showToast(currentLang === 'tr' ? 'Lütfen Ayarlar sekmesinden GitHub Token girin!' : 'Please configure GitHub Token in Settings!', 'error');
+        switchAdminTab('settings');
+        return;
+    }
+
     try {
+        showToast(currentLang === 'tr' ? 'GitHub ile senkronize ediliyor...' : 'Syncing with GitHub...', 'info');
+
         const [events, team, categories] = await Promise.all([
             getEvents(),
             getTeamMembers(),
             getCategories()
         ]);
-        const data = { events, team, categories };
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'dott-data.json';
-        a.click();
-        URL.revokeObjectURL(url);
-        showToast(currentLang === 'tr' ? 'JSON dosyası indirildi!' : 'JSON file downloaded!', 'success');
+
+        await pushFileToGitHub('data/events.json', JSON.stringify(events, null, 2), token);
+        await pushFileToGitHub('data/team.json', JSON.stringify(team, null, 2), token);
+        await pushFileToGitHub('data/categories.json', JSON.stringify(categories, null, 2), token);
+
+        showToast(currentLang === 'tr' ? 'GitHub ile başarıyla senkronize edildi!' : 'Successfully synced with GitHub!', 'success');
     } catch (err) {
-        showToast(currentLang === 'tr' ? 'Dışa aktarma başarısız!' : 'Export failed!', 'error');
+        console.error(err);
+        showToast((currentLang === 'tr' ? 'Hata: ' : 'Error: ') + (err.message || 'Sync failed'), 'error');
     }
 }
 
-async function handleImportJSON() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+async function pushFileToGitHub(path, content, token) {
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`;
 
-        // Reject very large files (>2MB)
-        if (file.size > 2 * 1024 * 1024) {
-            showToast(currentLang === 'tr' ? 'Dosya çok büyük (maks 2MB)!' : 'File too large (max 2MB)!', 'error');
-            return;
+    // 1. Get file SHA
+    let sha = null;
+    try {
+        const getRes = await fetch(`${url}?ref=${GITHUB_BRANCH}`, {
+            headers: { 'Authorization': `token ${token}` }
+        });
+        if (getRes.ok) {
+            const data = await getRes.json();
+            sha = data.sha;
         }
+    } catch (e) {
+        // File might not exist yet, which is fine
+    }
 
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-            try {
-                const data = JSON.parse(ev.target.result);
+    // 2. Safely encode content to Base64 (supports UTF-8)
+    const utf8Bytes = new TextEncoder().encode(content);
+    const base64Content = btoa(Array.from(new Uint8Array(utf8Bytes)).map(byte => String.fromCharCode(byte)).join(''));
 
-                if (Array.isArray(data)) {
-                    setEventsData(data);
-                } else if (data && typeof data === 'object') {
-                    if (data.events !== undefined) {
-                        if (!Array.isArray(data.events)) throw new Error('Invalid events payload');
-                        setEventsData(data.events);
-                    }
-                    if (data.team !== undefined) {
-                        if (!Array.isArray(data.team)) throw new Error('Invalid team payload');
-                        setTeamMembersData(data.team);
-                    }
-                    if (data.categories !== undefined) {
-                        if (!Array.isArray(data.categories)) throw new Error('Invalid categories payload');
-                        setCategoriesData(data.categories);
-                    }
-                } else {
-                    throw new Error('Invalid import format');
-                }
-
-                invalidateEventsCache();
-                invalidateTeamCache();
-                invalidateCategoriesCache();
-                await renderAdminEvents();
-                await renderAdminTeam();
-                await renderAdminCategories();
-                await loadCategorySelector();
-                showToast(currentLang === 'tr' ? 'Veriler başarıyla içe aktarıldı!' : 'Data imported successfully!', 'success');
-            } catch (err) {
-                showToast(currentLang === 'tr' ? 'Geçersiz JSON dosyası!' : 'Invalid JSON file!', 'error');
-            }
-        };
-        reader.readAsText(file);
+    // 3. Push to GitHub
+    const body = {
+        message: `Admin Panel: Update ${path}`,
+        content: base64Content,
+        branch: GITHUB_BRANCH
     };
-    input.click();
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(url, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+    });
+
+    if (!putRes.ok) {
+        const errData = await putRes.json();
+        throw new Error(errData.message || 'Failed to push to GitHub');
+    }
 }
+
 
 /* ========================================
    Initialize Admin Panel
@@ -1152,6 +1152,30 @@ function setupAdminForms() {
     if (iconInput && iconPreview) {
         iconInput.addEventListener('input', () => {
             iconPreview.textContent = iconInput.value.trim() || 'category';
+        });
+    }
+
+    // GitHub settings form
+    const githubForm = document.getElementById('github-settings-form');
+    if (githubForm) {
+        // Load existing token
+        const existingToken = localStorage.getItem(GITHUB_TOKEN_KEY);
+        if (existingToken) {
+            const tokenInput = document.getElementById('github-token-input');
+            if (tokenInput) tokenInput.value = existingToken;
+        }
+
+        githubForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const tokenInput = document.getElementById('github-token-input');
+            const token = tokenInput ? tokenInput.value.trim() : '';
+            if (token) {
+                localStorage.setItem(GITHUB_TOKEN_KEY, token);
+                showToast(currentLang === 'tr' ? 'Token başarıyla kaydedildi!' : 'Token saved successfully!', 'success');
+            } else {
+                localStorage.removeItem(GITHUB_TOKEN_KEY);
+                showToast(currentLang === 'tr' ? 'Token kaldırıldı.' : 'Token removed.', 'info');
+            }
         });
     }
 }
