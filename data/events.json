@@ -26,5 +26,20 @@
     "link": "",
     "id": "evt_1772405631243_1vvf2wgd",
     "createdAt": "2026-03-01T22:53:51.243Z"
+  },
+  {
+    "title_tr": "Bu nasıl etkinlik",
+    "title_en": "",
+    "description_tr": "Güzel bir etkinlik",
+    "description_en": "",
+    "date": "2026-03-27",
+    "time": "",
+    "category": "technical",
+    "location": "",
+    "image": "",
+    "link": "https://youtu.be/Aq5WXmQQooo?si=yyfQKYAXN2lhekPF",
+    "id": "evt_1772406007270_c20ef7v8",
+    "createdAt": "2026-03-01T23:00:07.271Z",
+    "updatedAt": "2026-03-01T23:04:29.405Z"
   }
 ]
