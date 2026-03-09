@@ -103,7 +103,7 @@ function getNavbarHTML() {
                     <button data-lang="tr" class="${currentLang === 'tr' ? 'active' : ''}">TR</button>
                     <button data-lang="en" class="${currentLang === 'en' ? 'active' : ''}">EN</button>
                 </div>
-                <a href="#" id="join-community-btn"
+                <a href="https://linktr.ee/gazidott" target="_blank" id="join-community-btn"
                     class="hidden sm:inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-bold text-background-dark shadow-sm hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all"
                     data-i18n="nav.joinCommunity">${t('nav.joinCommunity')}</a>
                 <button id="mobile-menu-btn" class="md:hidden p-2 text-text-muted hover:text-white transition-colors">
@@ -125,7 +125,7 @@ function getNavbarHTML() {
             ${mobileLinks}
         </nav>
         <div class="p-4 border-t border-border-dark">
-            <a href="#" id="join-community-btn-mobile"
+            <a href="https://linktr.ee/gazidott" target="_blank" id="join-community-btn-mobile"
                 class="block w-full text-center rounded-lg bg-primary px-4 py-3 text-sm font-bold text-background-dark hover:bg-orange-400 transition-all"
                 data-i18n="nav.joinCommunity">${t('nav.joinCommunity')}</a>
         </div>

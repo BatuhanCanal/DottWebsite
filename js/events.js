@@ -440,7 +440,7 @@ async function renderHomePage() {
     const workshopsContainer = document.getElementById('home-workshops');
     if (workshopsContainer) {
         const workshops = events
-            .filter(e => e.category !== 'gamejam' && new Date(e.date).getTime() >= now)
+            .filter(e => e.category === 'workshop' && new Date(e.date).getTime() >= now)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
             .slice(0, 2);
 
