@@ -111,25 +111,25 @@ function getNavbarHTML() {
                 </button>
             </div>
         </div>
-        <!-- Mobile menu -->
-        <div id="mobile-menu-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeMobileMenu()"></div>
-        <div id="mobile-menu-panel" class="fixed top-0 right-0 bottom-0 w-72 bg-background-dark border-l border-border-dark z-50 translate-x-full overflow-y-auto">
-            <div class="flex items-center justify-between p-4 border-b border-border-dark">
-                <span class="font-display text-lg font-bold text-white">Gazi DOTT</span>
-                <button onclick="closeMobileMenu()" class="p-2 text-text-muted hover:text-white transition-colors">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
-            </div>
-            <nav class="py-4">
-                ${mobileLinks}
-            </nav>
-            <div class="p-4 border-t border-border-dark">
-                <a href="#" id="join-community-btn-mobile"
-                    class="block w-full text-center rounded-lg bg-primary px-4 py-3 text-sm font-bold text-background-dark hover:bg-orange-400 transition-all"
-                    data-i18n="nav.joinCommunity">${t('nav.joinCommunity')}</a>
-            </div>
+    </header>
+    <!-- Mobile menu (outside header to avoid stacking context issues) -->
+    <div id="mobile-menu-overlay" class="fixed inset-0 bg-black/50 z-[998] hidden" onclick="closeMobileMenu()"></div>
+    <div id="mobile-menu-panel" class="fixed top-0 right-0 bottom-0 w-72 bg-background-dark border-l border-border-dark z-[999] translate-x-full overflow-y-auto">
+        <div class="flex items-center justify-between p-4 border-b border-border-dark">
+            <span class="font-display text-lg font-bold text-white">Gazi DOTT</span>
+            <button onclick="closeMobileMenu()" class="p-2 text-text-muted hover:text-white transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
         </div>
-    </header>`;
+        <nav class="py-4">
+            ${mobileLinks}
+        </nav>
+        <div class="p-4 border-t border-border-dark">
+            <a href="#" id="join-community-btn-mobile"
+                class="block w-full text-center rounded-lg bg-primary px-4 py-3 text-sm font-bold text-background-dark hover:bg-orange-400 transition-all"
+                data-i18n="nav.joinCommunity">${t('nav.joinCommunity')}</a>
+        </div>
+    </div>`;
 }
 
 /**
