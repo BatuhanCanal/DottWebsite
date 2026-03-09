@@ -273,19 +273,19 @@ function renderEventCard(event) {
         <!-- Content -->
         <div class="p-5 space-y-4">
             <!-- Date/Time/Location info row -->
-            <div class="flex flex-wrap gap-3">
-                <div class="flex items-center gap-1.5 text-sm text-text-muted bg-background-dark/50 px-3 py-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-primary text-[16px]">calendar_today</span>
+            <div class="flex flex-wrap gap-2 sm:gap-3">
+                <div class="flex items-center gap-1.5 text-xs sm:text-sm text-text-muted bg-background-dark/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
+                    <span class="material-symbols-outlined text-primary text-[14px] sm:text-[16px]">calendar_today</span>
                     <span>${formatDate(event.date)}</span>
                 </div>
                 ${safeTime ? `
-                <div class="flex items-center gap-1.5 text-sm text-text-muted bg-background-dark/50 px-3 py-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-primary text-[16px]">schedule</span>
+                <div class="flex items-center gap-1.5 text-xs sm:text-sm text-text-muted bg-background-dark/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
+                    <span class="material-symbols-outlined text-primary text-[14px] sm:text-[16px]">schedule</span>
                     <span>${safeTime}</span>
                 </div>` : ''}
                 ${safeLocation ? `
-                <div class="flex items-center gap-1.5 text-sm text-text-muted bg-background-dark/50 px-3 py-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-primary text-[16px]">${event.location?.toLowerCase() === 'online' || event.location?.toLowerCase() === 'çevrimiçi' ? 'videocam' : 'location_on'}</span>
+                <div class="flex items-center gap-1.5 text-xs sm:text-sm text-text-muted bg-background-dark/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
+                    <span class="material-symbols-outlined text-primary text-[14px] sm:text-[16px]">${event.location?.toLowerCase() === 'online' || event.location?.toLowerCase() === 'çevrimiçi' ? 'videocam' : 'location_on'}</span>
                     <span>${safeLocation}</span>
                 </div>` : ''}
             </div>
@@ -314,15 +314,15 @@ function renderPastEventRow(event) {
     const safeLink = escapeHTML(event.link);
 
     return `
-    <div class="block bg-card-dark/30 hover:bg-card-dark border border-transparent hover:border-border-dark rounded-lg p-4 transition-colors">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4 flex-wrap">
-                <div class="bg-gray-800 text-gray-400 font-mono text-xs px-2 py-1 rounded">${monthYear}</div>
-                <span class="text-white font-medium">${safeTitle}</span>
+    <div class="block bg-card-dark/30 hover:bg-card-dark border border-transparent hover:border-border-dark rounded-lg p-3 sm:p-4 transition-colors">
+        <div class="flex items-start sm:items-center justify-between gap-2">
+            <div class="flex items-start sm:items-center gap-2 sm:gap-4 flex-wrap min-w-0 flex-1">
+                <div class="bg-gray-800 text-gray-400 font-mono text-[10px] sm:text-xs px-2 py-1 rounded flex-shrink-0">${monthYear}</div>
+                <span class="text-white font-medium text-sm sm:text-base">${safeTitle}</span>
                 ${getCategoryBadge(event.category)}
                 ${safeLocation ? `<span class="text-xs text-text-muted flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">location_on</span>${safeLocation}</span>` : ''}
             </div>
-            ${safeLink ? `<a href="${safeLink}" target="_blank"><span class="material-symbols-outlined text-text-muted text-sm hover:text-primary transition-colors">chevron_right</span></a>` : ''}
+            ${safeLink ? `<a href="${safeLink}" target="_blank" class="flex-shrink-0"><span class="material-symbols-outlined text-text-muted text-sm hover:text-primary transition-colors">chevron_right</span></a>` : ''}
         </div>
     </div>`;
 }

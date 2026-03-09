@@ -451,7 +451,8 @@ async function renderAdminTeam() {
         const safeId = escapeHTML(member.id);
 
         return `
-        <div class="bg-card-dark border border-border-dark rounded-xl p-4 flex items-center gap-4 hover:border-border-dark/80 transition-all">
+        <div class="bg-card-dark border border-border-dark rounded-xl p-4 hover:border-border-dark/80 transition-all">
+            <div class="flex items-center gap-4">
             ${member.photo
                 ? `<img src="${safePhoto}" alt="" class="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-border-dark" onerror="this.style.display='none'" />`
                 : `<div class="w-12 h-12 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex-shrink-0 flex items-center justify-center border border-primary/20"><span class="material-symbols-outlined text-primary text-[20px]">person</span></div>`
@@ -460,7 +461,7 @@ async function renderAdminTeam() {
                 <h4 class="font-bold text-white truncate text-sm">${safeName}</h4>
                 <p class="text-xs text-primary">${safeRole}</p>
             </div>
-            <div class="flex items-center gap-1 flex-shrink-0">
+            <div class="hidden sm:flex items-center gap-1 flex-shrink-0">
                 <button onclick="handleMoveTeamMember('${safeId}', 'up')"
                     class="p-1.5 rounded-lg hover:bg-card-dark text-text-muted hover:text-white transition-colors ${idx === 0 ? 'opacity-30 pointer-events-none' : ''}"
                     title="Move up">
@@ -480,6 +481,30 @@ async function renderAdminTeam() {
                     class="p-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
                     title="${t('admin.delete')}">
                     <span class="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+            </div>
+            </div>
+            <!-- Mobile action buttons row -->
+            <div class="flex sm:hidden items-center gap-1 mt-3 pt-3 border-t border-border-dark/50 justify-end">
+                <button onclick="handleMoveTeamMember('${safeId}', 'up')"
+                    class="p-2 rounded-lg hover:bg-card-dark text-text-muted hover:text-white transition-colors ${idx === 0 ? 'opacity-30 pointer-events-none' : ''}"
+                    title="Move up">
+                    <span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+                </button>
+                <button onclick="handleMoveTeamMember('${safeId}', 'down')"
+                    class="p-2 rounded-lg hover:bg-card-dark text-text-muted hover:text-white transition-colors ${idx === members.length - 1 ? 'opacity-30 pointer-events-none' : ''}"
+                    title="Move down">
+                    <span class="material-symbols-outlined text-[18px]">arrow_downward</span>
+                </button>
+                <button onclick="handleEditMember('${safeId}')"
+                    class="p-2 rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                    title="${t('admin.edit')}">
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+                <button onclick="handleDeleteMember('${safeId}')"
+                    class="p-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                    title="${t('admin.delete')}">
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
             </div>
         </div>`;

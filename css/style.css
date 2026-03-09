@@ -140,6 +140,18 @@ body {
     transform: translateY(100px);
     opacity: 0;
     transition: all 0.3s ease;
+    max-width: calc(100vw - 32px);
+}
+
+@media (max-width: 640px) {
+    .toast {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%) translateY(100px);
+    }
+    .toast.show {
+        transform: translateX(-50%) translateY(0);
+    }
 }
 
 .toast.show {
@@ -153,6 +165,24 @@ body {
 
 .toast.error {
     border-color: #ef4444;
+}
+
+/* Touch-friendly improvements */
+@media (max-width: 640px) {
+    button, a, .filter-btn, .admin-tab-btn, .category-card {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* Admin tab horizontal scrolling on mobile */
+.admin-tabs-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.admin-tabs-scroll::-webkit-scrollbar {
+    display: none;
 }
 
 /* No scrollbar utility */
