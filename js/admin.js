@@ -973,16 +973,17 @@ function setCookie(name, value, days = 365) {
         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
         expires = "; expires=" + date.toUTCString();
     }
-    document.cookie = name + "=" + (value || "") + "; expires=" + expires + "; path=/; SameSite=Lax";
+    document.cookie = name + "=" + encodeURIComponent(value || "") + expires + "; path=/; SameSite=Lax";
 }
 
 function getCookie(name) {
     let nameEQ = name + "=";
     let ca = document.cookie.split(';');
     for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        let c = ca[i].trim();
+        if (c.indexOf(nameEQ) == 0) {
+            return decodeURIComponent(c.substring(nameEQ.length, c.length));
+        }
     }
     return null;
 }
@@ -992,6 +993,20 @@ function deleteCookie(name) {
 }
 // ----------------------
 
+// --- Sync Lock & Button State Helpers ---
+let _syncInProgress = false;
+
+function setSyncButtonsLoading(loading) {
+    const syncBtn = document.querySelector('[onclick="handleGitHubSync()"]');
+    const pullBtn = document.querySelector('[onclick="handleGitHubPull()"]');
+    [syncBtn, pullBtn].forEach(btn => {
+        if (!btn) return;
+        btn.disabled = loading;
+        btn.style.opacity = loading ? '0.5' : '1';
+        btn.style.pointerEvents = loading ? 'none' : 'auto';
+    });
+}
+
 async function handleGitHubSync() {
     const token = getCookie(GITHUB_TOKEN_KEY);
     if (!token) {
@@ -999,6 +1014,22 @@ async function handleGitHubSync() {
         switchAdminTab('settings');
         return;
     }
+
+    // Prevent concurrent syncs
+    if (_syncInProgress) {
+        showToast(currentLang === 'tr' ? 'Senkronizasyon zaten devam ediyor...' : 'Sync already in progress...', 'info');
+        return;
+    }
+
+    // Confirmation dialog
+    if (!confirm(currentLang === 'tr'
+        ? 'GitHub\'a senkronize etmek istediğinize emin misiniz? Bu işlem depodaki verilerin üzerine yazacaktır.'
+        : 'Are you sure you want to sync to GitHub? This will overwrite repository data.')) {
+        return;
+    }
+
+    _syncInProgress = true;
+    setSyncButtonsLoading(true);
 
     try {
         showToast(currentLang === 'tr' ? 'GitHub ile senkronize ediliyor...' : 'Syncing with GitHub...', 'info');
@@ -1016,7 +1047,10 @@ async function handleGitHubSync() {
         showToast(currentLang === 'tr' ? 'GitHub ile başarıyla senkronize edildi!' : 'Successfully synced with GitHub!', 'success');
     } catch (err) {
         console.error(err);
-        showToast((currentLang === 'tr' ? 'Hata: ' : 'Error: ') + (err.message || 'Sync failed'), 'error');
+        showToast((currentLang === 'tr' ? 'Hata: ' : 'Error: ') + formatGitHubError(err), 'error');
+    } finally {
+        _syncInProgress = false;
+        setSyncButtonsLoading(false);
     }
 }
 
@@ -1027,6 +1061,15 @@ async function handleGitHubPull() {
         return false;
     }
 
+    // Prevent concurrent operations
+    if (_syncInProgress) {
+        showToast(currentLang === 'tr' ? 'İşlem zaten devam ediyor...' : 'Operation already in progress...', 'info');
+        return false;
+    }
+
+    _syncInProgress = true;
+    setSyncButtonsLoading(true);
+
     try {
         showToast(currentLang === 'tr' ? 'GitHub\'dan güncel veriler çekiliyor...' : 'Pulling latest data from GitHub...', 'info');
 
@@ -1036,13 +1079,11 @@ async function handleGitHubPull() {
             fetchFileFromGitHub('data/categories.json', token)
         ]);
 
+        // setEventsData / setTeamMembersData / setCategoriesData already update
+        // both localStorage AND the in-memory cache, so no need to invalidate after.
         if (eventsData) setEventsData(eventsData);
         if (teamData) setTeamMembersData(teamData);
         if (catData) setCategoriesData(catData);
-
-        invalidateEventsCache();
-        invalidateTeamCache();
-        invalidateCategoriesCache();
 
         await Promise.all([
             loadCategorySelector(),
@@ -1055,8 +1096,11 @@ async function handleGitHubPull() {
         return true;
     } catch (err) {
         console.error(err);
-        showToast((currentLang === 'tr' ? 'Çekme Hatası: ' : 'Pull Error: ') + (err.message || 'Failed'), 'error');
+        showToast((currentLang === 'tr' ? 'Çekme Hatası: ' : 'Pull Error: ') + formatGitHubError(err), 'error');
         return false;
+    } finally {
+        _syncInProgress = false;
+        setSyncButtonsLoading(false);
     }
 }
 
@@ -1075,28 +1119,30 @@ async function fetchFileFromGitHub(path, token) {
     return await res.json();
 }
 
-async function pushFileToGitHub(path, content, token) {
-    const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`;
-
-    // 1. Get file SHA
-    let sha = null;
+async function fetchFileSHA(url, token) {
     try {
         const getRes = await fetch(`${url}?ref=${GITHUB_BRANCH}`, {
             headers: {
                 'Authorization': `token ${token}`,
                 'Accept': 'application/vnd.github.v3+json'
             },
-            cache: 'no-store' // IMPORTANT: Prevent browser from caching the old SHA
+            cache: 'no-store'
         });
         if (getRes.ok) {
             const data = await getRes.json();
-            sha = data.sha;
-        } else {
-            console.warn(`Failed to fetch current SHA for ${path}: ${getRes.status}`);
+            return data.sha;
         }
     } catch (e) {
-        console.warn(`Error fetching SHA for ${path}:`, e);
+        console.warn(`Error fetching SHA:`, e);
     }
+    return null;
+}
+
+async function pushFileToGitHub(path, content, token, _isRetry = false) {
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`;
+
+    // 1. Get file SHA
+    let sha = await fetchFileSHA(url, token);
 
     // 2. Safely encode content to Base64 (supports UTF-8)
     const utf8Bytes = new TextEncoder().encode(content);
@@ -1120,9 +1166,39 @@ async function pushFileToGitHub(path, content, token) {
     });
 
     if (!putRes.ok) {
-        const errData = await putRes.json();
+        const errData = await putRes.json().catch(() => ({}));
+        const status = putRes.status;
+
+        // Auto-retry once on 409 Conflict (SHA mismatch from concurrent edit)
+        if (status === 409 && !_isRetry) {
+            console.warn(`SHA conflict for ${path}, retrying...`);
+            return pushFileToGitHub(path, content, token, true);
+        }
+
+        // User-friendly error messages
+        if (status === 403) {
+            throw new Error(currentLang === 'tr'
+                ? 'Yetki hatası: Token\'ın yeterli izinlere sahip olduğundan emin olun (repo yetkisi gerekli).'
+                : 'Permission denied: Ensure your token has the required "repo" scope.');
+        }
+        if (status === 409) {
+            throw new Error(currentLang === 'tr'
+                ? 'Çakışma hatası: Depoda eşzamanlı bir değişiklik var. Lütfen tekrar deneyin.'
+                : 'Conflict: The repository was modified concurrently. Please try again.');
+        }
         throw new Error(errData.message || 'Failed to push to GitHub');
     }
+}
+
+/**
+ * Format GitHub API errors into user-friendly messages
+ */
+function formatGitHubError(err) {
+    const msg = err.message || '';
+    if (msg.includes('Bad credentials') || msg.includes('401')) {
+        return currentLang === 'tr' ? 'Geçersiz token. Lütfen Ayarlar\'dan kontrol edin.' : 'Invalid token. Please check Settings.';
+    }
+    return msg || (currentLang === 'tr' ? 'Bilinmeyen hata' : 'Unknown error');
 }
 
 
@@ -1265,13 +1341,31 @@ function setupAdminForms() {
             if (tokenInput) tokenInput.value = existingToken;
         }
 
-        githubForm.addEventListener('submit', (e) => {
+        githubForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const tokenInput = document.getElementById('github-token-input');
             const token = tokenInput ? tokenInput.value.trim() : '';
             if (token) {
-                setCookie(GITHUB_TOKEN_KEY, token, 365); // 1 year persistence
-                showToast(currentLang === 'tr' ? 'Token başarıyla kaydedildi!' : 'Token saved successfully!', 'success');
+                // Validate token before saving
+                const submitBtn = githubForm.querySelector('button[type="submit"]');
+                if (submitBtn) { submitBtn.disabled = true; submitBtn.style.opacity = '0.5'; }
+                showToast(currentLang === 'tr' ? 'Token doğrulanıyor...' : 'Validating token...', 'info');
+
+                try {
+                    const res = await fetch('https://api.github.com/user', {
+                        headers: { 'Authorization': `token ${token}` }
+                    });
+                    if (!res.ok) {
+                        showToast(currentLang === 'tr' ? 'Geçersiz token! Lütfen kontrol edin.' : 'Invalid token! Please check and try again.', 'error');
+                        return;
+                    }
+                    setCookie(GITHUB_TOKEN_KEY, token, 365); // 1 year persistence
+                    showToast(currentLang === 'tr' ? 'Token doğrulandı ve kaydedildi!' : 'Token validated and saved!', 'success');
+                } catch {
+                    showToast(currentLang === 'tr' ? 'Token doğrulama başarısız. İnternet bağlantınızı kontrol edin.' : 'Token validation failed. Check your internet connection.', 'error');
+                } finally {
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.style.opacity = '1'; }
+                }
             } else {
                 deleteCookie(GITHUB_TOKEN_KEY);
                 showToast(currentLang === 'tr' ? 'Token kaldırıldı.' : 'Token removed.', 'info');
