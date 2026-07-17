@@ -54,25 +54,39 @@ async function initCountdownFromEvents() {
     const events = await getEvents();
     const now = new Date().getTime();
 
-    // Find the nearest upcoming game jam
+    // Find the nearest upcoming session across all game jam events.
     const upcomingJams = events
-        .filter(e => e.category === 'gamejam' && new Date(e.date).getTime() > now)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .filter(event => event.category === 'gamejam')
+        .map(event => ({
+            event,
+            session: getEventSessions(event)
+                .find(session => getSessionTimestamp(session) > now)
+        }))
+        .filter(item => item.session)
+        .sort((a, b) => getSessionTimestamp(a.session) - getSessionTimestamp(b.session));
 
     if (upcomingJams.length > 0) {
-        const nextJam = upcomingJams[0];
+        const { event: nextJam, session: nextSession } = upcomingJams[0];
+        document.getElementById('countdown-timer')?.classList.remove('opacity-50');
         const els = {
             days: document.getElementById('countdown-days'),
             hours: document.getElementById('countdown-hours'),
             minutes: document.getElementById('countdown-minutes'),
             seconds: document.getElementById('countdown-seconds'),
         };
-        startCountdown(nextJam.date, els);
+        const target = `${nextSession.date}T${nextSession.time || '00:00'}`;
+        startCountdown(target, els);
 
         // Update jam info
         const titleEl = document.getElementById('countdown-title');
         const descEl = document.getElementById('countdown-desc');
         if (titleEl) titleEl.textContent = currentLang === 'tr' ? nextJam.title_tr : nextJam.title_en;
         if (descEl) descEl.textContent = currentLang === 'tr' ? nextJam.description_tr : nextJam.description_en;
+    } else {
+        const titleEl = document.getElementById('countdown-title');
+        const descEl = document.getElementById('countdown-desc');
+        if (titleEl) titleEl.textContent = t('gamejams.noJams');
+        if (descEl) descEl.textContent = '';
+        document.getElementById('countdown-timer')?.classList.add('opacity-50');
     }
 }

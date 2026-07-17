@@ -33,6 +33,21 @@ const translations = {
         "home.reason.learnDesc": "Atölye ve workshop'larla yeni beceriler kazan.",
         "home.reason.create": "Yarat",
         "home.reason.createDesc": "Game jam'lerde fikirlerini oyunlara dönüştür.",
+        "label.nextSession": "Sonraki Oturum",
+        "label.workshopQueue": "Atölye Takvimi",
+        "label.eventBoard": "Etkinlik Panosu",
+        "label.eventBoardIndex": "Etkinlik Panosu / 01",
+        "label.dottProtocol": "DOTT Sistemi",
+        "label.buildProtocol": "48 Saatlik Üretim",
+        "label.communityProfile": "Topluluk Profili / 03",
+        "label.purpose": "Amaç",
+        "label.practiceAreas": "Çalışma Alanları",
+        "label.coreTeam": "Yönetim Ekibi",
+        "label.openChannel": "Açık Kanal / 04",
+        "label.channels": "Kanallar",
+        "label.connect": "01 / Bağlan",
+        "label.learn": "02 / Öğren",
+        "label.build": "03 / Üret",
 
         // Events page
         "events.title": "Etkinlikler",
@@ -45,6 +60,8 @@ const translations = {
         "events.noEvents": "Henüz planlanmış etkinlik yok.",
         "events.details": "Detaylar",
         "events.past": "Geçmiş Etkinlikler",
+        "events.dateLabel": "Etkinlik tarihi",
+        "events.session": "Oturum",
 
         // Game Jams page
         "gamejams.title": "Game Jam'ler",
@@ -92,6 +109,7 @@ const translations = {
         "contact.message": "Mesajınız",
         "contact.send": "Gönder",
         "contact.followUs": "Bizi Takip Edin",
+        "contact.communityCta": "Gazi DOTT topluluğuna katılın, duyuruları takip edin ve birlikte üretmeye başlayın.",
 
         // Admin
         "admin.title": "Yönetim Paneli",
@@ -101,6 +119,7 @@ const translations = {
         "admin.wrongPassword": "Yanlış şifre!",
         "admin.tabEvents": "Etkinlikler",
         "admin.tabTeam": "Ekip Yönetimi",
+        "admin.tabSettings": "Ayarlar",
         "admin.createEvent": "Yeni Etkinlik Oluştur",
         "admin.editEvent": "Etkinliği Düzenle",
         "admin.eventTitle": "Etkinlik Başlığı",
@@ -110,13 +129,35 @@ const translations = {
         "admin.eventDescEn": "Açıklama (İngilizce)",
         "admin.eventDate": "Tarih",
         "admin.eventTime": "Saat",
+        "admin.eventDates": "Etkinlik Tarihleri",
+        "admin.addDate": "Tarih Ekle",
+        "admin.sessionLabelTr": "Oturum adı (Türkçe)",
+        "admin.sessionLabelEn": "Oturum adı (İngilizce)",
+        "admin.removeDate": "Tarihi kaldır",
         "admin.eventCategory": "Kategori",
         "admin.eventLocation": "Konum",
         "admin.eventImage": "Etkinlik Görseli",
         "admin.eventImageUrl": "Görsel URL",
         "admin.eventImageUpload": "veya dosya yükle",
-        "admin.eventImageDrop": "Görseli buraya sürükleyin veya tıklayın",
+        "admin.eventImageDrop": "Görsel seçin veya buraya sürükleyin",
+        "admin.eventImageHint": "JPG, PNG veya WebP · Otomatik olarak optimize edilir",
+        "admin.eventImageUrlAlternative": "veya görsel bağlantısı kullan",
+        "admin.eventImageProcessing": "Görsel hazırlanıyor...",
+        "admin.eventImageReady": "Hazır: {before} → {after}",
+        "admin.eventImagePending": "Görsel siteye yüklenmeyi bekliyor",
+        "admin.eventImagePublished": "Görsel siteye yüklenmiş",
+        "admin.removeImage": "Görseli kaldır",
+        "admin.imageUnsupported": "Lütfen JPG, PNG veya WebP formatında bir görsel seçin.",
+        "admin.imageTooLarge": "Görsel en fazla 12 MB olabilir.",
+        "admin.imageOptimizeFailed": "Görsel hazırlanamadı. Başka bir dosya deneyin.",
+        "admin.imageStillProcessing": "Görsel hazırlanırken lütfen bekleyin.",
         "admin.eventLink": "Etkinlik Linki (opsiyonel)",
+        "admin.eventLinks": "Yönlendirme Butonları",
+        "admin.addLink": "Buton Ekle",
+        "admin.linkLabelTr": "Buton adı (Türkçe)",
+        "admin.linkLabelEn": "Buton adı (İngilizce)",
+        "admin.linkUrl": "Yönlendirme adresi",
+        "admin.removeLink": "Butonu kaldır",
         "admin.save": "Kaydet",
         "admin.update": "Güncelle",
         "admin.cancel": "İptal",
@@ -132,7 +173,17 @@ const translations = {
         "admin.eventDeleted": "Etkinlik silindi!",
         "admin.deletePastEvents": "Geçmiş Etkinlikleri Temizle",
         "admin.logout": "Çıkış Yap",
+        "admin.logoutShort": "Çıkış",
         "admin.importJson": "JSON İçe Aktar",
+        "admin.githubPull": "En Günceli Çek",
+        "admin.githubPullShort": "Yenile",
+        "admin.githubSync": "Siteye Yayınla",
+        "admin.githubSyncShort": "Yayınla",
+        "admin.allChangesPublished": "Tüm değişiklikler yayınlandı",
+        "admin.changesPending": "Yayınlanmayı bekleyen değişiklikler var",
+        "admin.pendingImageUpload": "Görsel yüklenmeyi bekliyor",
+        "admin.uploadingImages": "Görseller yükleniyor ({current}/{total})...",
+        "admin.eventSavedPending": "Etkinlik kaydedildi. Siteye eklemek için “Siteye Yayınla”ya basın.",
         // Admin - Team
         "admin.addMember": "Yeni Üye Ekle",
         "admin.editMember": "Üyeyi Düzenle",
@@ -145,7 +196,7 @@ const translations = {
         "admin.memberUpdated": "Ekip üyesi güncellendi!",
         "admin.memberDeleted": "Ekip üyesi silindi!",
         "admin.existingMembers": "Ekip Üyeleri",
-        "admin.imageSizeWarning": "Görsel 500KB'den büyük — yükleme süresi uzayabilir.",
+        "admin.imageSizeWarning": "Görsel en fazla 2 MB olabilir.",
         // Admin - Categories
         "admin.tabCategories": "Kategoriler",
         "admin.createCategory": "Yeni Kategori Oluştur",
@@ -198,6 +249,21 @@ const translations = {
         "home.reason.learnDesc": "Gain new skills through workshops and training.",
         "home.reason.create": "Create",
         "home.reason.createDesc": "Turn your ideas into games at game jams.",
+        "label.nextSession": "Next Session",
+        "label.workshopQueue": "Workshop Queue",
+        "label.eventBoard": "Event Board",
+        "label.eventBoardIndex": "Event Board / 01",
+        "label.dottProtocol": "DOTT Protocol",
+        "label.buildProtocol": "48H Build Protocol",
+        "label.communityProfile": "Community Profile / 03",
+        "label.purpose": "Purpose",
+        "label.practiceAreas": "Practice Areas",
+        "label.coreTeam": "Core Team",
+        "label.openChannel": "Open Channel / 04",
+        "label.channels": "Channels",
+        "label.connect": "01 / Connect",
+        "label.learn": "02 / Learn",
+        "label.build": "03 / Build",
 
         // Events page
         "events.title": "Events",
@@ -210,6 +276,8 @@ const translations = {
         "events.noEvents": "No events planned yet.",
         "events.details": "Details",
         "events.past": "Past Events",
+        "events.dateLabel": "Event date",
+        "events.session": "Session",
 
         // Game Jams page
         "gamejams.title": "Game Jams",
@@ -257,6 +325,7 @@ const translations = {
         "contact.message": "Your Message",
         "contact.send": "Send",
         "contact.followUs": "Follow Us",
+        "contact.communityCta": "Join the Gazi DOTT community, follow announcements, and start creating together.",
 
         // Admin
         "admin.title": "Admin Panel",
@@ -266,6 +335,7 @@ const translations = {
         "admin.wrongPassword": "Wrong password!",
         "admin.tabEvents": "Events",
         "admin.tabTeam": "Team Management",
+        "admin.tabSettings": "Settings",
         "admin.createEvent": "Create New Event",
         "admin.editEvent": "Edit Event",
         "admin.eventTitle": "Event Title",
@@ -275,13 +345,35 @@ const translations = {
         "admin.eventDescEn": "Description (English)",
         "admin.eventDate": "Date",
         "admin.eventTime": "Time",
+        "admin.eventDates": "Event Dates",
+        "admin.addDate": "Add Date",
+        "admin.sessionLabelTr": "Session name (Turkish)",
+        "admin.sessionLabelEn": "Session name (English)",
+        "admin.removeDate": "Remove date",
         "admin.eventCategory": "Category",
         "admin.eventLocation": "Location",
         "admin.eventImage": "Event Image",
         "admin.eventImageUrl": "Image URL",
         "admin.eventImageUpload": "or upload file",
-        "admin.eventImageDrop": "Drag & drop image here or click",
+        "admin.eventImageDrop": "Choose an image or drag it here",
+        "admin.eventImageHint": "JPG, PNG or WebP · Optimized automatically",
+        "admin.eventImageUrlAlternative": "or use an image URL",
+        "admin.eventImageProcessing": "Preparing image...",
+        "admin.eventImageReady": "Ready: {before} → {after}",
+        "admin.eventImagePending": "Image is waiting to be uploaded",
+        "admin.eventImagePublished": "Image is uploaded to the site",
+        "admin.removeImage": "Remove image",
+        "admin.imageUnsupported": "Please choose a JPG, PNG or WebP image.",
+        "admin.imageTooLarge": "The image can be up to 12 MB.",
+        "admin.imageOptimizeFailed": "The image could not be prepared. Try another file.",
+        "admin.imageStillProcessing": "Please wait while the image is being prepared.",
         "admin.eventLink": "Event Link (optional)",
+        "admin.eventLinks": "Action Buttons",
+        "admin.addLink": "Add Button",
+        "admin.linkLabelTr": "Button name (Turkish)",
+        "admin.linkLabelEn": "Button name (English)",
+        "admin.linkUrl": "Destination URL",
+        "admin.removeLink": "Remove button",
         "admin.save": "Save",
         "admin.update": "Update",
         "admin.cancel": "Cancel",
@@ -297,7 +389,17 @@ const translations = {
         "admin.eventDeleted": "Event deleted!",
         "admin.deletePastEvents": "Clear Past Events",
         "admin.logout": "Logout",
+        "admin.logoutShort": "Exit",
         "admin.importJson": "Import JSON",
+        "admin.githubPull": "Get Latest",
+        "admin.githubPullShort": "Refresh",
+        "admin.githubSync": "Publish Site",
+        "admin.githubSyncShort": "Publish",
+        "admin.allChangesPublished": "All changes are published",
+        "admin.changesPending": "There are changes waiting to be published",
+        "admin.pendingImageUpload": "Image is waiting to be uploaded",
+        "admin.uploadingImages": "Uploading images ({current}/{total})...",
+        "admin.eventSavedPending": "Event saved. Select “Publish Site” to add it to the site.",
         // Admin - Team
         "admin.addMember": "Add New Member",
         "admin.editMember": "Edit Member",
@@ -310,7 +412,7 @@ const translations = {
         "admin.memberUpdated": "Team member updated!",
         "admin.memberDeleted": "Team member deleted!",
         "admin.existingMembers": "Team Members",
-        "admin.imageSizeWarning": "Image is larger than 500KB — loading may be slow.",
+        "admin.imageSizeWarning": "The image can be up to 2 MB.",
         // Admin - Categories
         "admin.tabCategories": "Categories",
         "admin.createCategory": "Create New Category",
@@ -374,6 +476,14 @@ function updatePageTranslations() {
         const key = el.getAttribute('data-i18n-html');
         el.innerHTML = t(key);
     });
+
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        el.title = t(el.getAttribute('data-i18n-title'));
+    });
+
+    document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+        el.setAttribute('aria-label', t(el.getAttribute('data-i18n-aria-label')));
+    });
 }
 
 /**
@@ -402,7 +512,8 @@ function initI18n() {
         btn.addEventListener('click', async () => {
             setLanguage(btn.getAttribute('data-lang'));
             // Re-render dynamic content if available (await to prevent race conditions)
-            if (typeof renderEvents === 'function') await renderEvents();
+            if (typeof renderHomePage === 'function' && document.getElementById('home-events')) await renderHomePage();
+            if (typeof renderEvents === 'function') await renderEvents(typeof currentFilter === 'undefined' ? 'all' : currentFilter);
             if (typeof renderGameJams === 'function') await renderGameJams();
             if (typeof renderAdminEvents === 'function') await renderAdminEvents();
             if (typeof renderTeamMembers === 'function') await renderTeamMembers();

@@ -108,30 +108,34 @@
                             </div>
                             <div>
                                 <h1 class="text-xl font-bold text-white" data-i18n="admin.title">Yönetim Paneli</h1>
-                                <p class="text-xs text-text-muted">🔒 Local session active</p>
+                                <p id="admin-publish-status" class="flex items-center gap-1 text-xs text-text-muted">
+                                    <span class="material-symbols-outlined text-[14px]">cloud_done</span>
+                                    <span data-i18n="admin.allChangesPublished">Tüm değişiklikler yayınlandı</span>
+                                </p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                             <button onclick="handleGitHubPull()"
+                                data-i18n-title="admin.githubPull" data-i18n-aria-label="admin.githubPull"
                                 class="flex-1 sm:flex-none rounded-lg border border-border-dark bg-card-dark px-3 py-2 text-xs font-medium text-text-muted hover:text-white hover:border-primary/50 transition-all flex items-center justify-center gap-1.5">
                                 <span class="material-symbols-outlined text-[16px]">cloud_download</span>
                                 <span data-i18n="admin.githubPull" class="hidden sm:inline">En Günceli Çek</span>
+                                <span data-i18n="admin.githubPullShort" class="sm:hidden">Yenile</span>
                             </button>
                             <button onclick="handleGitHubSync()"
+                                data-i18n-title="admin.githubSync" data-i18n-aria-label="admin.githubSync"
                                 class="flex-1 sm:flex-none rounded-lg bg-[#24292F] border border-[#24292F]/20 px-3 py-2 text-xs font-bold text-white hover:bg-[#1b1f23] transition-all flex items-center justify-center gap-1.5">
-                                <svg height="16" viewBox="0 0 16 16" version="1.1" width="16" aria-hidden="true"
-                                    fill="currentColor">
-                                    <path fill-rule="evenodd"
-                                        d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z">
-                                    </path>
-                                </svg>
+                                <span class="material-symbols-outlined text-[17px]">cloud_upload</span>
                                 <span data-i18n="admin.githubSync" class="hidden sm:inline">GitHub'a Senkronize
                                     Et</span>
+                                <span data-i18n="admin.githubSyncShort" class="sm:hidden">Yayınla</span>
                             </button>
                             <button onclick="adminLogout()"
+                                data-i18n-title="admin.logout" data-i18n-aria-label="admin.logout"
                                 class="flex-1 sm:flex-none rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/20 transition-all flex items-center justify-center gap-1.5">
                                 <span class="material-symbols-outlined text-[16px]">logout</span>
                                 <span data-i18n="admin.logout" class="hidden sm:inline">Çıkış Yap</span>
+                                <span data-i18n="admin.logoutShort" class="sm:hidden">Çıkış</span>
                             </button>
                         </div>
                     </div>
@@ -209,21 +213,18 @@
                                     <textarea name="description_en" rows="3"
                                         class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm resize-none"></textarea>
                                 </div>
-                                <!-- Date & Time -->
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-xs font-medium text-text-muted mb-1"
-                                            data-i18n="admin.eventDate">Tarih</label>
-                                        <input name="event_date" type="date"
-                                            class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white focus:border-primary focus:ring-1 focus:ring-primary text-sm"
-                                            required />
+                                <!-- Event Sessions -->
+                                <div>
+                                    <div class="mb-2 flex items-center justify-between gap-3">
+                                        <label class="text-xs font-medium text-text-muted"
+                                            data-i18n="admin.eventDates">Etkinlik Tarihleri</label>
+                                        <button type="button" onclick="addEventSessionRow()"
+                                            class="inline-flex min-h-8 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-background-dark">
+                                            <span class="material-symbols-outlined text-[16px]">add</span>
+                                            <span data-i18n="admin.addDate">Tarih Ekle</span>
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-text-muted mb-1"
-                                            data-i18n="admin.eventTime">Saat</label>
-                                        <input name="event_time" type="time"
-                                            class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white focus:border-primary focus:ring-1 focus:ring-primary text-sm" />
-                                    </div>
+                                    <div id="event-sessions-list" class="space-y-3"></div>
                                 </div>
                                 <!-- Category Visual Selector -->
                                 <div>
@@ -248,34 +249,57 @@
                                 <div>
                                     <label class="block text-xs font-medium text-text-muted mb-2"
                                         data-i18n="admin.eventImage">Etkinlik Görseli</label>
+                                    <input id="event-image-file" type="file" accept="image/jpeg,image/png,image/webp"
+                                        class="sr-only" />
                                     <!-- Drop Zone -->
-                                    <div id="event-image-drop" class="drop-zone rounded-lg p-6 text-center mb-2">
+                                    <button id="event-image-drop" type="button"
+                                        class="drop-zone mb-2 w-full rounded-lg p-5 text-center focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-card-dark">
                                         <span
                                             class="material-symbols-outlined text-text-muted text-[32px] mb-1 block">cloud_upload</span>
-                                        <p class="text-xs text-text-muted" data-i18n="admin.eventImageDrop">Görseli
-                                            buraya sürükleyin veya tıklayın</p>
+                                        <span class="block text-sm font-medium text-white"
+                                            data-i18n="admin.eventImageDrop">Görsel seçin veya buraya sürükleyin</span>
+                                        <span class="mt-1 block text-[11px] text-text-muted"
+                                            data-i18n="admin.eventImageHint">JPG, PNG veya WebP · Otomatik olarak optimize edilir</span>
+                                    </button>
+                                    <div id="event-image-status"
+                                        class="mb-2 hidden items-center gap-2 rounded-lg border border-border-dark bg-background-dark/50 px-3 py-2 text-xs text-text-muted"
+                                        role="status" aria-live="polite">
+                                        <span id="event-image-status-icon"
+                                            class="material-symbols-outlined text-[17px]">progress_activity</span>
+                                        <span id="event-image-status-text"></span>
+                                    </div>
+                                    <div id="event-image-preview-wrap" class="relative mb-2 hidden overflow-hidden rounded-lg border border-border-dark">
+                                        <img id="event-image-preview" class="h-36 w-full object-cover" alt="" />
+                                        <button type="button" onclick="clearEventImage()"
+                                            class="absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-lg border border-white/20 bg-background-dark/90 text-white transition-colors hover:bg-red-500"
+                                            data-i18n-aria-label="admin.removeImage" data-i18n-title="admin.removeImage"
+                                            aria-label="Görseli kaldır" title="Görseli kaldır">
+                                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                                        </button>
                                     </div>
                                     <!-- URL alternative -->
                                     <div class="flex items-center gap-2 mb-2">
                                         <div class="flex-1 h-px bg-border-dark"></div>
                                         <span class="text-[10px] text-text-muted uppercase"
-                                            data-i18n="admin.eventImageUpload">veya dosya yükle</span>
+                                            data-i18n="admin.eventImageUrlAlternative">veya görsel bağlantısı kullan</span>
                                         <div class="flex-1 h-px bg-border-dark"></div>
                                     </div>
                                     <input id="event-image-url" name="image_url" type="url"
                                         class="block w-full rounded-lg border border-border-dark bg-background-dark py-2 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-xs"
                                         placeholder="https://..." />
-                                    <img id="event-image-preview"
-                                        class="hidden mt-2 w-full h-28 object-cover rounded-lg border border-border-dark"
-                                        alt="Preview" />
                                 </div>
-                                <!-- Event Link -->
+                                <!-- Event Action Links -->
                                 <div>
-                                    <label class="block text-xs font-medium text-text-muted mb-1"
-                                        data-i18n="admin.eventLink">Etkinlik Linki (opsiyonel)</label>
-                                    <input name="event_link" type="url"
-                                        class="block w-full rounded-lg border border-border-dark bg-background-dark py-2.5 px-3 text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary text-sm"
-                                        placeholder="https://..." />
+                                    <div class="mb-2 flex items-center justify-between gap-3">
+                                        <label class="text-xs font-medium text-text-muted"
+                                            data-i18n="admin.eventLinks">Yönlendirme Butonları</label>
+                                        <button type="button" onclick="addEventLinkRow()"
+                                            class="inline-flex min-h-8 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-background-dark">
+                                            <span class="material-symbols-outlined text-[16px]">add_link</span>
+                                            <span data-i18n="admin.addLink">Buton Ekle</span>
+                                        </button>
+                                    </div>
+                                    <div id="event-links-list" class="space-y-3"></div>
                                 </div>
                                 <!-- Submit -->
                                 <div class="flex gap-2">

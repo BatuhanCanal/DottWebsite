@@ -142,6 +142,94 @@ function getEventDesc(event) {
 }
 
 /**
+ * Return chronologically sorted sessions while supporting legacy date/time fields.
+ */
+function getEventSessions(event) {
+    const source = Array.isArray(event.sessions) && event.sessions.length > 0
+        ? event.sessions
+        : (event.date ? [{ date: event.date, time: event.time || '' }] : []);
+
+    return source
+        .map((session, index) => ({
+            date: String(session?.date || '').trim(),
+            time: String(session?.time || '').trim(),
+            label_tr: String(session?.label_tr || session?.label || '').trim(),
+            label_en: String(session?.label_en || session?.label || '').trim(),
+            _order: index,
+        }))
+        .filter(session => /^\d{4}-\d{2}-\d{2}$/.test(session.date))
+        .sort((a, b) => {
+            const timeDiff = getSessionTimestamp(a) - getSessionTimestamp(b);
+            return timeDiff || a._order - b._order;
+        })
+        .map(({ _order, ...session }) => session);
+}
+
+function getSessionTimestamp(session, endOfDay = false) {
+    if (!session?.date) return Number.NaN;
+    const fallbackTime = endOfDay ? '23:59:59' : '00:00:00';
+    const time = session.time ? `${session.time}:00`.slice(0, 8) : fallbackTime;
+    return new Date(`${session.date}T${time}`).getTime();
+}
+
+function getEventDisplaySession(event, now = Date.now()) {
+    const sessions = getEventSessions(event);
+    if (sessions.length === 0) return null;
+
+    return sessions.find(session => getSessionTimestamp(session, true) >= now)
+        || sessions[sessions.length - 1];
+}
+
+function isEventUpcoming(event, now = Date.now()) {
+    return getEventSessions(event).some(session => getSessionTimestamp(session, true) >= now);
+}
+
+function getEventSortTimestamp(event, now = Date.now()) {
+    const displaySession = getEventDisplaySession(event, now);
+    return displaySession ? getSessionTimestamp(displaySession) : 0;
+}
+
+function getSafeExternalUrl(value) {
+    try {
+        const url = new URL(String(value || '').trim());
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+    } catch {
+        return '';
+    }
+}
+
+/**
+ * Return named action links while supporting the legacy single link field.
+ */
+function getEventLinks(event) {
+    const source = Array.isArray(event.links) && event.links.length > 0
+        ? event.links
+        : (event.link ? [{ url: event.link }] : []);
+
+    return source
+        .map(link => ({
+            label_tr: String(link?.label_tr || link?.label || '').trim(),
+            label_en: String(link?.label_en || link?.label || '').trim(),
+            url: getSafeExternalUrl(link?.url || link?.link),
+        }))
+        .filter(link => link.url);
+}
+
+function getSessionLabel(session, index, total) {
+    const label = currentLang === 'tr'
+        ? (session.label_tr || session.label_en)
+        : (session.label_en || session.label_tr);
+    if (label) return label;
+    return total > 1 ? `${index + 1}. ${t('events.session')}` : '';
+}
+
+function getEventLinkLabel(link) {
+    return currentLang === 'tr'
+        ? (link.label_tr || link.label_en || t('events.details'))
+        : (link.label_en || link.label_tr || t('events.details'));
+}
+
+/**
  * Color map for category badges (uses shared COLOR_CONFIG from common.js)
  */
 const COLOR_MAP = COLOR_CONFIG.badge;
@@ -168,7 +256,7 @@ function getCategoryBadge(categoryId) {
  * Format date for display
  */
 function formatDate(dateStr) {
-    const date = new Date(dateStr);
+    const date = new Date(`${dateStr}T00:00:00`);
     const options = { day: 'numeric', month: 'long', year: 'numeric' };
     return date.toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-US', options);
 }
@@ -177,7 +265,7 @@ function formatDate(dateStr) {
  * Format short date (e.g., "Mar 15")
  */
 function formatShortDate(dateStr) {
-    const date = new Date(dateStr);
+    const date = new Date(`${dateStr}T00:00:00`);
     const options = { day: '2-digit', month: 'short' };
     return date.toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-US', options);
 }
@@ -186,8 +274,50 @@ function formatShortDate(dateStr) {
  * Format day of week
  */
 function formatDayOfWeek(dateStr) {
-    const date = new Date(dateStr);
+    const date = new Date(`${dateStr}T00:00:00`);
     return date.toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-US', { weekday: 'long' });
+}
+
+function renderEventSessions(event, compact = false) {
+    const sessions = getEventSessions(event);
+    if (sessions.length === 0) return '';
+
+    if (compact) {
+        return `<div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-text-muted">
+            ${sessions.map((session, index) => {
+                const label = escapeHTML(getSessionLabel(session, index, sessions.length));
+                return `<span class="inline-flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[14px] text-primary">calendar_today</span>
+                    ${label ? `<strong class="font-bold text-white">${label}</strong>` : ''}
+                    <span>${formatDate(session.date)}${session.time ? `, ${escapeHTML(session.time)}` : ''}</span>
+                </span>`;
+            }).join('')}
+        </div>`;
+    }
+
+    return `<div class="border-y border-border-dark/70">
+        ${sessions.map((session, index) => {
+            const label = escapeHTML(getSessionLabel(session, index, sessions.length));
+            return `<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 text-xs ${index > 0 ? 'border-t border-border-dark/60' : ''}">
+                <span class="inline-flex items-center gap-1.5 font-bold text-white">
+                    <span class="material-symbols-outlined text-[15px] text-primary">calendar_today</span>
+                    ${label || t('events.dateLabel')}
+                </span>
+                <span class="text-text-muted">${formatDate(session.date)}${session.time ? ` · ${escapeHTML(session.time)}` : ''}</span>
+            </div>`;
+        }).join('')}
+    </div>`;
+}
+
+function renderEventActions(event, className = '') {
+    return getEventLinks(event).map(link => {
+        const label = escapeHTML(getEventLinkLabel(link));
+        const url = escapeHTML(link.url);
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="${className}" aria-label="${label}">
+            <span class="max-w-40 truncate">${label}</span>
+            <span class="material-symbols-outlined text-[16px]">north_east</span>
+        </a>`;
+    }).join('');
 }
 
 /**
@@ -197,43 +327,43 @@ function renderFeaturedCard(event) {
     const safeImage = escapeHTML(event.image) || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&q=80';
     const safeTitle = escapeHTML(getEventTitle(event));
     const safeDesc = escapeHTML(getEventDesc(event));
-    const safeTime = escapeHTML(event.time);
     const safeLocation = escapeHTML(event.location);
-    const safeLink = escapeHTML(event.link);
+    const sessions = getEventSessions(event);
+    const displaySession = getEventDisplaySession(event);
+    const actions = renderEventActions(event, 'inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-background-dark');
 
     return `
-    <div class="group relative overflow-hidden rounded-xl bg-card-dark border border-border-dark hover:border-primary/50 transition-all shadow-md hover:shadow-xl hover:shadow-primary/5 card-hover">
-        <div class="flex flex-col sm:flex-row h-full">
-            <div class="h-48 sm:h-auto sm:w-2/5 relative">
-                <div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                    style="background-image: url('${safeImage}');"></div>
-                <div class="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-card-dark to-transparent opacity-90 sm:opacity-60"></div>
-                <div class="absolute top-3 left-3 bg-black/60 backdrop-blur px-2 py-1 rounded text-xs font-bold text-white border border-white/10">
-                    ${formatShortDate(event.date)}
+    <article class="hud-panel card-hover image-zoom group h-full">
+        <div class="grid h-full sm:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+            <div class="relative min-h-52 overflow-hidden border-b border-border-dark sm:min-h-full sm:border-b-0 sm:border-r">
+                <img src="${safeImage}" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
+                <div class="absolute inset-0 bg-gradient-to-t from-background-dark/90 via-background-dark/20 to-transparent sm:bg-gradient-to-r"></div>
+                <div class="absolute bottom-4 left-4 rounded-lg border border-primary/35 bg-background-dark/85 px-3 py-2 backdrop-blur">
+                    <span class="block text-[10px] font-bold uppercase text-text-muted">${t('events.dateLabel')}</span>
+                    <span class="block text-sm font-bold text-white">${displaySession ? formatShortDate(displaySession.date) : ''}${sessions.length > 1 ? ` +${sessions.length - 1}` : ''}</span>
                 </div>
             </div>
-            <div class="p-6 sm:w-3/5 flex flex-col justify-between">
+            <div class="flex min-w-0 flex-col justify-between p-5 sm:p-6">
                 <div>
-                    <div class="flex items-center gap-2 mb-2">
+                    <div class="mb-4 flex flex-wrap items-center gap-2">
                         ${getCategoryBadge(event.category)}
-                        <span class="text-xs text-text-muted flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[14px]">schedule</span> ${safeTime || ''}
-                        </span>
+                        ${displaySession?.time ? `<span class="flex items-center gap-1 text-xs text-text-muted"><span class="material-symbols-outlined text-[15px] text-primary">schedule</span>${escapeHTML(displaySession.time)}</span>` : ''}
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">
+                    <h3 class="mb-3 text-xl font-bold leading-tight text-white transition-colors group-hover:text-primary">
                         ${safeTitle}</h3>
-                    <p class="text-sm text-text-muted line-clamp-2 mb-4">${safeDesc}</p>
+                    <p class="mb-5 line-clamp-3 text-sm leading-6 text-text-muted">${safeDesc}</p>
+                    ${renderEventSessions(event, true)}
                 </div>
-                <div class="flex items-center justify-between mt-auto">
-                    <div class="flex items-center gap-1 text-xs text-text-muted">
-                        <span class="material-symbols-outlined text-[16px]">location_on</span>
+                <div class="mt-5 flex flex-col gap-3 border-t border-border-dark/80 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex min-w-0 items-center gap-1.5 text-xs text-text-muted">
+                        <span class="material-symbols-outlined text-[16px] text-primary">location_on</span>
                         <span>${safeLocation || ''}</span>
                     </div>
-                    ${safeLink ? `<a href="${safeLink}" target="_blank" class="text-sm font-bold text-white bg-primary/10 hover:bg-primary px-3 py-1.5 rounded transition-colors border border-primary/20 hover:border-primary">${t('events.details')}</a>` : ''}
+                    ${actions ? `<div class="flex flex-wrap gap-2 sm:justify-end">${actions}</div>` : ''}
                 </div>
             </div>
         </div>
-    </div>`;
+    </article>`;
 }
 
 /**
@@ -243,87 +373,76 @@ function renderEventCard(event) {
     const safeImage = escapeHTML(event.image) || 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&q=80';
     const safeTitle = escapeHTML(getEventTitle(event));
     const safeDesc = escapeHTML(getEventDesc(event));
-    const safeTime = escapeHTML(event.time);
     const safeLocation = escapeHTML(event.location);
-    const safeLink = escapeHTML(event.link);
-    const dayOfWeek = formatDayOfWeek(event.date);
+    const sessions = getEventSessions(event);
+    const displaySession = getEventDisplaySession(event);
+    const dayOfWeek = displaySession ? formatDayOfWeek(displaySession.date) : '';
+    const actions = renderEventActions(event, 'inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary hover:text-background-dark');
 
     return `
-    <div class="group rounded-2xl bg-card-dark border border-border-dark overflow-hidden hover:border-primary/40 transition-all card-hover shadow-lg hover:shadow-xl hover:shadow-primary/5">
-        <!-- Image -->
-        <div class="relative h-52 w-full overflow-hidden">
-            <div class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                style="background-image: url('${safeImage}');"></div>
-            <div class="absolute inset-0 bg-gradient-to-t from-card-dark/90 via-card-dark/20 to-transparent"></div>
-            <!-- Category Badge -->
-            <div class="absolute top-3 left-3">
+    <article class="hud-panel card-hover image-zoom group flex h-full flex-col">
+        <div class="relative aspect-[16/9] w-full overflow-hidden border-b border-border-dark">
+            <img src="${safeImage}" alt="" loading="lazy" class="absolute inset-0 h-full w-full object-cover" />
+            <div class="absolute inset-0 bg-gradient-to-t from-background-dark/95 via-background-dark/10 to-transparent"></div>
+            <div class="absolute left-4 top-4">
                 ${getCategoryBadge(event.category)}
             </div>
-            <!-- Date Badge -->
-            <div class="absolute top-3 right-3 bg-primary text-background-dark font-bold text-xs px-3 py-1.5 rounded-lg shadow-lg">
-                ${formatShortDate(event.date)}
-            </div>
-            <!-- Title overlay on image bottom -->
+            ${displaySession ? `<div class="absolute right-4 top-4 rounded-lg border border-primary/30 bg-primary px-3 py-1.5 text-xs font-bold text-background-dark shadow-lg">
+                ${formatShortDate(displaySession.date)}${sessions.length > 1 ? ` +${sessions.length - 1}` : ''}
+            </div>` : ''}
             <div class="absolute bottom-0 left-0 right-0 p-5">
-                <h3 class="text-xl font-bold text-white group-hover:text-primary transition-colors drop-shadow-lg leading-tight">
+                <h3 class="text-xl font-bold leading-tight text-white drop-shadow-lg transition-colors group-hover:text-primary">
                     ${safeTitle}
                 </h3>
             </div>
         </div>
-        <!-- Content -->
-        <div class="p-5 space-y-4">
-            <!-- Date/Time/Location info row -->
-            <div class="flex flex-wrap gap-2 sm:gap-3">
-                <div class="flex items-center gap-1.5 text-xs sm:text-sm text-text-muted bg-background-dark/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-primary text-[14px] sm:text-[16px]">calendar_today</span>
-                    <span>${formatDate(event.date)}</span>
-                </div>
-                ${safeTime ? `
-                <div class="flex items-center gap-1.5 text-xs sm:text-sm text-text-muted bg-background-dark/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-primary text-[14px] sm:text-[16px]">schedule</span>
-                    <span>${safeTime}</span>
-                </div>` : ''}
+        <div class="flex flex-1 flex-col space-y-4 p-5">
+            <div class="flex flex-wrap gap-2">
                 ${safeLocation ? `
-                <div class="flex items-center gap-1.5 text-xs sm:text-sm text-text-muted bg-background-dark/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg">
-                    <span class="material-symbols-outlined text-primary text-[14px] sm:text-[16px]">${event.location?.toLowerCase() === 'online' || event.location?.toLowerCase() === 'çevrimiçi' ? 'videocam' : 'location_on'}</span>
+                <div class="hud-panel-muted flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-text-muted">
+                    <span class="material-symbols-outlined text-[15px] text-primary">${event.location?.toLowerCase() === 'online' || event.location?.toLowerCase() === 'çevrimiçi' ? 'videocam' : 'location_on'}</span>
                     <span>${safeLocation}</span>
                 </div>` : ''}
             </div>
-            <!-- Description -->
-            <p class="text-sm text-text-muted line-clamp-3 leading-relaxed">${safeDesc}</p>
-            <!-- Day + Link row -->
-            <div class="flex items-center justify-between pt-3 border-t border-border-dark/50">
-                <span class="text-xs text-text-muted/70 capitalize">${dayOfWeek}</span>
-                ${safeLink ? `<a href="${safeLink}" target="_blank" class="inline-flex items-center gap-1.5 text-sm font-bold text-white bg-primary/10 hover:bg-primary px-4 py-2 rounded-lg transition-colors border border-primary/20 hover:border-primary">
-                    <span>${t('events.details')}</span>
-                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </a>` : ''}
+            ${renderEventSessions(event)}
+            <p class="line-clamp-3 text-sm leading-6 text-text-muted">${safeDesc}</p>
+            <div class="mt-auto flex flex-col gap-3 border-t border-border-dark/70 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <span class="text-xs capitalize text-text-muted/70">${dayOfWeek}</span>
+                ${actions ? `<div class="flex flex-wrap gap-2 sm:justify-end">${actions}</div>` : ''}
             </div>
         </div>
-    </div>`;
+    </article>`;
 }
 
 /**
  * Render a past event row
  */
 function renderPastEventRow(event) {
-    const date = new Date(event.date);
+    const displaySession = getEventDisplaySession(event);
+    const date = new Date(`${displaySession?.date || event.date}T00:00:00`);
     const monthYear = date.toLocaleDateString(currentLang === 'tr' ? 'tr-TR' : 'en-US', { month: 'short', year: 'numeric' }).toUpperCase();
     const safeTitle = escapeHTML(getEventTitle(event));
     const safeLocation = escapeHTML(event.location);
-    const safeLink = escapeHTML(event.link);
+    const actions = renderEventActions(event, 'inline-flex min-h-8 items-center gap-1 rounded-lg border border-border-dark px-2.5 text-xs font-bold text-text-muted transition-colors hover:border-primary/40 hover:text-primary');
 
     return `
-    <div class="block bg-card-dark/30 hover:bg-card-dark border border-transparent hover:border-border-dark rounded-lg p-3 sm:p-4 transition-colors">
-        <div class="flex items-start sm:items-center justify-between gap-2">
-            <div class="flex items-start sm:items-center gap-2 sm:gap-4 flex-wrap min-w-0 flex-1">
-                <div class="bg-gray-800 text-gray-400 font-mono text-[10px] sm:text-xs px-2 py-1 rounded flex-shrink-0">${monthYear}</div>
-                <span class="text-white font-medium text-sm sm:text-base">${safeTitle}</span>
+    <div class="hud-panel-muted block p-3 transition-colors hover:border-primary/35 sm:p-4">
+        <div class="flex items-start justify-between gap-3 sm:items-center">
+            <div class="flex min-w-0 flex-1 flex-wrap items-start gap-2 sm:items-center sm:gap-4">
+                <div class="shrink-0 rounded border border-border-dark bg-background-dark px-2 py-1 font-mono text-[10px] text-primary sm:text-xs">${monthYear}</div>
+                <span class="text-sm font-medium text-white sm:text-base">${safeTitle}</span>
                 ${getCategoryBadge(event.category)}
                 ${safeLocation ? `<span class="text-xs text-text-muted flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">location_on</span>${safeLocation}</span>` : ''}
             </div>
-            ${safeLink ? `<a href="${safeLink}" target="_blank" class="flex-shrink-0"><span class="material-symbols-outlined text-text-muted text-sm hover:text-primary transition-colors">chevron_right</span></a>` : ''}
+            ${actions ? `<div class="flex flex-wrap justify-end gap-2">${actions}</div>` : ''}
         </div>
+    </div>`;
+}
+
+function renderEmptyState(icon, message) {
+    return `<div class="hud-panel-muted col-span-full flex min-h-52 flex-col items-center justify-center px-6 py-12 text-center text-text-muted">
+        <span class="material-symbols-outlined mb-4 text-4xl text-primary">${icon}</span>
+        <p class="max-w-md text-sm leading-6">${message}</p>
     </div>`;
 }
 
@@ -337,13 +456,13 @@ async function buildFilterBar() {
     const categories = await getCategories();
 
     let html = `<button onclick="filterEvents('all')" data-filter="all"
-        class="filter-btn whitespace-nowrap rounded-full bg-primary px-4 py-1.5 text-sm font-bold text-background-dark"
+        class="filter-btn min-h-10 whitespace-nowrap rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-bold text-background-dark"
         data-i18n="events.filter.all">${t('events.filter.all')}</button>`;
 
     categories.forEach(cat => {
         const label = currentLang === 'tr' ? (cat.name_tr || cat.name_en) : (cat.name_en || cat.name_tr);
         html += `<button onclick="filterEvents('${escapeHTML(cat.id)}')" data-filter="${escapeHTML(cat.id)}"
-            class="filter-btn whitespace-nowrap rounded-full border border-border-dark bg-transparent px-4 py-1.5 text-sm font-medium text-text-muted hover:border-primary hover:text-white transition-colors">${escapeHTML(label)}</button>`;
+            class="filter-btn min-h-10 whitespace-nowrap rounded-lg border border-border-dark bg-card-dark/45 px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/60 hover:text-white">${escapeHTML(label)}</button>`;
     });
 
     container.innerHTML = html;
@@ -363,19 +482,19 @@ async function renderEvents(filter = 'all') {
     const events = await getEvents();
     const now = new Date().getTime();
 
-    let upcoming = events.filter(e => new Date(e.date).getTime() >= now && e.category !== 'gamejam');
-    let past = events.filter(e => new Date(e.date).getTime() < now && e.category !== 'gamejam');
+    let upcoming = events.filter(e => isEventUpcoming(e, now) && e.category !== 'gamejam');
+    let past = events.filter(e => !isEventUpcoming(e, now) && e.category !== 'gamejam');
 
     if (filter !== 'all') {
         upcoming = upcoming.filter(e => e.category === filter);
         past = past.filter(e => e.category === filter);
     }
 
-    upcoming.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    past.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    upcoming.sort((a, b) => getEventSortTimestamp(a, now) - getEventSortTimestamp(b, now));
+    past.sort((a, b) => getEventSortTimestamp(b, now) - getEventSortTimestamp(a, now));
 
     if (upcoming.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-16 text-text-muted"><span class="material-symbols-outlined text-4xl mb-4 block">event_busy</span><p data-i18n="events.noEvents">${t('events.noEvents')}</p></div>`;
+        container.innerHTML = renderEmptyState('event_busy', t('events.noEvents'));
     } else {
         container.innerHTML = upcoming.map(e => renderEventCard(e)).join('');
     }
@@ -404,15 +523,15 @@ async function renderGameJams() {
     const now = new Date().getTime();
 
     const upcomingJams = events
-        .filter(e => e.category === 'gamejam' && new Date(e.date).getTime() >= now)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        .filter(e => e.category === 'gamejam' && isEventUpcoming(e, now))
+        .sort((a, b) => getEventSortTimestamp(a, now) - getEventSortTimestamp(b, now));
 
     const pastJams = events
-        .filter(e => e.category === 'gamejam' && new Date(e.date).getTime() < now)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .filter(e => e.category === 'gamejam' && !isEventUpcoming(e, now))
+        .sort((a, b) => getEventSortTimestamp(b, now) - getEventSortTimestamp(a, now));
 
     if (upcomingJams.length === 0) {
-        container.innerHTML = `<div class="col-span-full text-center py-16 text-text-muted"><span class="material-symbols-outlined text-4xl mb-4 block">sports_esports</span><p data-i18n="gamejams.noJams">${t('gamejams.noJams')}</p></div>`;
+        container.innerHTML = renderEmptyState('sports_esports', t('gamejams.noJams'));
     } else {
         container.innerHTML = upcomingJams.map(e => renderEventCard(e)).join('');
     }
@@ -440,14 +559,14 @@ async function renderHomePage() {
     const workshopsContainer = document.getElementById('home-workshops');
     if (workshopsContainer) {
         const workshops = events
-            .filter(e => e.category === 'workshop' && new Date(e.date).getTime() >= now)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .filter(e => e.category === 'workshop' && isEventUpcoming(e, now))
+            .sort((a, b) => getEventSortTimestamp(a, now) - getEventSortTimestamp(b, now))
             .slice(0, 2);
 
         if (workshops.length > 0) {
             workshopsContainer.innerHTML = workshops.map(e => renderFeaturedCard(e)).join('');
         } else {
-            workshopsContainer.innerHTML = `<div class="col-span-full text-center py-8 text-text-muted">${t('events.noEvents')}</div>`;
+            workshopsContainer.innerHTML = renderEmptyState('draw', t('events.noEvents'));
         }
     }
 
@@ -455,14 +574,14 @@ async function renderHomePage() {
     const eventsContainer = document.getElementById('home-events');
     if (eventsContainer) {
         const upcoming = events
-            .filter(e => new Date(e.date).getTime() >= now)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .filter(e => isEventUpcoming(e, now))
+            .sort((a, b) => getEventSortTimestamp(a, now) - getEventSortTimestamp(b, now))
             .slice(0, 3);
 
         if (upcoming.length > 0) {
             eventsContainer.innerHTML = upcoming.map(e => renderEventCard(e)).join('');
         } else {
-            eventsContainer.innerHTML = `<div class="col-span-full text-center py-8 text-text-muted">${t('events.noEvents')}</div>`;
+            eventsContainer.innerHTML = renderEmptyState('event_busy', t('events.noEvents'));
         }
     }
 
@@ -470,8 +589,8 @@ async function renderHomePage() {
     const pastContainer = document.getElementById('home-past-events');
     if (pastContainer) {
         const past = events
-            .filter(e => new Date(e.date).getTime() < now)
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .filter(e => !isEventUpcoming(e, now))
+            .sort((a, b) => getEventSortTimestamp(b, now) - getEventSortTimestamp(a, now))
             .slice(0, 4);
 
         if (past.length > 0) {

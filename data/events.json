@@ -56,5 +56,491 @@
     "link": "https://youtu.be/v1ZxvYHQfzM?si=o8h7b4pXbXF_zjzM",
     "id": "evt_1772407377157_3h4onbpu",
     "createdAt": "2026-03-01T23:22:57.158Z"
+  },
+  {
+    "id": "event-tanisma-toplantisi-2025",
+    "title_tr": "Tanışma Toplantısı",
+    "title_en": "",
+    "description_tr": "Gazi Üniversitesi Dijital Oyun Tasarımı Topluluğu olarak 2025-2026 akademik yılını Tanışma Toplantısı ile açıyoruz. Yeni üyelerimizle tanışacak, topluluğumuzun hedeflerini ve planlanan etkinlikleri paylaşacak, oyun tasarımına dair sohbetlerle keyifli vakit geçireceğiz. Oyunlara ilgin varsa ve yaratıcı bir toplulukta yer almak istiyorsan seni de aramızda görmek istiyoruz.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2025-10-04",
+        "time": "",
+        "label_tr": "Tanışma Toplantısı",
+        "label_en": ""
+      }
+    ],
+    "date": "2025-10-04",
+    "time": "",
+    "category": "social",
+    "location": "Bahçelievler Coffee UP",
+    "image": "assets/events/tanisma-toplantisi-2025.webp",
+    "links": [
+      {
+        "label_tr": "Fotoğraflar",
+        "label_en": "Photos",
+        "url": "https://drive.google.com/drive/folders/1OgNmfUpcrAoTZ25xxXo020DVw73_mMDb"
+      }
+    ],
+    "link": "https://drive.google.com/drive/folders/1OgNmfUpcrAoTZ25xxXo020DVw73_mMDb",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-godot-egitimi-2025",
+    "title_tr": "Godot Eğitimi",
+    "title_en": "",
+    "description_tr": "Başlangıç seviyesine uygun, hafif ve hızlı bir oyun motoru olan Godot Engine eğitimiyle karşınızdayız. Sade ve anlaşılır arayüzü, düşük sistem gereksinimleri ve GDScript programlama dili sayesinde oyun geliştirmeye başlamak isteyenler için güçlü bir başlangıç sunuyor.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2025-10-27",
+        "time": "18:00",
+        "label_tr": "1. Ders",
+        "label_en": "Lesson 1"
+      },
+      {
+        "date": "2025-10-30",
+        "time": "18:00",
+        "label_tr": "2. Ders",
+        "label_en": "Lesson 2"
+      }
+    ],
+    "date": "2025-10-27",
+    "time": "18:00",
+    "category": "workshop",
+    "location": "Teknoloji Fakültesi B Blok Samsung Lab",
+    "image": "assets/events/godot-egitimi-2025.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-masa-oyunlari-2025",
+    "title_tr": "Masa Oyunları Etkinliği",
+    "title_en": "",
+    "description_tr": "Birlikte eğlenmeye, rekabet etmeye ve yeni oyunlar keşfetmeye hazır mısınız? İster strateji ustası olun ister sadece keyifli vakit geçirmek isteyin, herkese açık bu etkinliğimizde sizi aramızda görmekten mutluluk duyarız.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2025-11-18",
+        "time": "18:00",
+        "label_tr": "Oyun Günü",
+        "label_en": ""
+      }
+    ],
+    "date": "2025-11-18",
+    "time": "18:00",
+    "category": "social",
+    "location": "Söğütözü Da Vinci Board Game Cafe",
+    "image": "assets/events/masa-oyunlari-2025.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-hakan-soyozen-teatalk-2025",
+    "title_tr": "Hakan Soyözen ile TeaTalk",
+    "title_en": "",
+    "description_tr": "Oyun dünyasının deneyimli isimlerinden Hakan Soyözen ile yeniden bir araya geliyoruz. Mount & Blade II: Bannerlord yapım sürecinde yer almış, TaleWorlds Senior Gameplay Programmer ve Gazi Üniversitesi Bilgisayar Mühendisliği mezunu Hakan Soyözen ile sektör tecrübelerini, oyun programlamanın inceliklerini ve kariyer yolculuğunu konuşacağız.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2025-12-06",
+        "time": "14:00",
+        "label_tr": "TeaTalk",
+        "label_en": "TeaTalk"
+      }
+    ],
+    "date": "2025-12-06",
+    "time": "14:00",
+    "category": "technical",
+    "location": "Bahçelievler T&T Coffee",
+    "image": "assets/events/hakan-soyozen-teatalk-2025.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-somestr-oyun-etkinligi-2026",
+    "title_tr": "Sömestr Oyun Etkinliği",
+    "title_en": "",
+    "description_tr": "Dijital Oyun Tasarımı Topluluğu olarak çevrimiçi bir oyun etkinliği düzenliyoruz. Çeşitli çevrimiçi ve parti oyunlarıyla sömestr tatilini daha keyifli hale getirmek ve birlikte eğlenmek için sizi de aramızda görmek istiyoruz. Ana etkinlik 20.00'da başlayacak, gün boyunca Discord'da olacağız.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-01-28",
+        "time": "20:00",
+        "label_tr": "Oyun Etkinliği",
+        "label_en": ""
+      }
+    ],
+    "date": "2026-01-28",
+    "time": "20:00",
+    "category": "social",
+    "location": "Çevrimiçi / Discord",
+    "image": "assets/events/somestr-oyun-etkinligi-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-iftar-yemegi-2026",
+    "title_tr": "İftar Yemeği",
+    "title_en": "",
+    "description_tr": "Gazi DOTT ve GSB Saraçoğlu Gençlik Merkezi olarak Ramazan'ın bereketini ve bir arada olmanın mutluluğunu paylaşıyoruz. Aynı sofranın etrafında buluşup samimi bir sohbet eşliğinde oruçlarımızı açacağız. Etkinlik ücretsizdir, kontenjan sınırlıdır.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-02-25",
+        "time": "18:30",
+        "label_tr": "İftar Yemeği",
+        "label_en": ""
+      }
+    ],
+    "date": "2026-02-25",
+    "time": "18:30",
+    "category": "social",
+    "location": "GSB Saraçoğlu Gençlik Merkezi",
+    "image": "assets/events/iftar-yemegi-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-yage-dott-csharp-egitimi-2026",
+    "title_tr": "YAGE & DOTT: C# Eğitimi",
+    "title_en": "",
+    "description_tr": "Oyun geliştirmeye ve yazılım dünyasına adım atmak isteyenler için serimizin ilk adımı başlıyor. Yeni başlayanların rahatlıkla takip edebileceği dört oturumluk eğitimde C# diline sağlam bir temel atacak, temel yazılım mantığını kavrayarak devamındaki Unity eğitimine hazırlanacaksınız.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-03-07",
+        "time": "14:00",
+        "label_tr": "1. Oturum",
+        "label_en": "Session 1"
+      },
+      {
+        "date": "2026-03-08",
+        "time": "14:00",
+        "label_tr": "2. Oturum",
+        "label_en": "Session 2"
+      },
+      {
+        "date": "2026-03-14",
+        "time": "14:00",
+        "label_tr": "3. Oturum",
+        "label_en": "Session 3"
+      },
+      {
+        "date": "2026-03-15",
+        "time": "14:00",
+        "label_tr": "4. Oturum",
+        "label_en": "Session 4"
+      }
+    ],
+    "date": "2026-03-07",
+    "time": "14:00",
+    "category": "workshop",
+    "location": "Teknoloji Fakültesi B Blok Laboratuvar 6",
+    "image": "assets/events/yage-dott-csharp-egitimi-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-nedim-can-incebay-teatalk-2026",
+    "title_tr": "Nedim Can İncebay ile Tea&Talk",
+    "title_en": "",
+    "description_tr": "Sinematik Artist Nedim Can İncebay'ı konuk ediyoruz. Mount & Blade II: Bannerlord War Sails fragmanları ve oyun içi sinematiklerinin yapımcısı, Total War: Warhammer 3 fragman ve sinematiklerinde görev almış İncebay ile tecrübelerini, sinematik artist olmanın inceliklerini ve kariyer yolculuğunu konuşacağız.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-03-07",
+        "time": "13:00",
+        "label_tr": "Tea&Talk",
+        "label_en": "Tea&Talk"
+      }
+    ],
+    "date": "2026-03-07",
+    "time": "13:00",
+    "category": "technical",
+    "location": "Bahçelievler 3. Cadde Coffee 1919 Kocatepe",
+    "image": "assets/events/nedim-can-incebay-teatalk-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-bkft-dott-oyun-gunu-2026",
+    "title_tr": "BKFT × DOTT Oyun Günü",
+    "title_en": "",
+    "description_tr": "Gerçekliğin sınırlarının büküldüğü, zarların kaderi tayin ettiği ve stratejinin kılıçtan keskin olduğu bir oyun günü için Caffé Di Toeé'de toplanıyoruz. Giriş ücreti 225 TL'dir; biletle Americano, Latte veya filtre kahveden biri alınabilir ya da farklı bir içecek için indirim olarak kullanılabilir.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-03-14",
+        "time": "13:00",
+        "label_tr": "Oyun Günü",
+        "label_en": ""
+      }
+    ],
+    "date": "2026-03-14",
+    "time": "13:00",
+    "category": "social",
+    "location": "Caffé Di Toeé, Mevlana Çarşısı",
+    "image": "assets/events/bkft-dott-oyun-gunu-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-sercan-uysal-draw-talk-2026",
+    "title_tr": "Sercan Uysal ile Draw&Talk",
+    "title_en": "",
+    "description_tr": "Çankaya Belediyesi Gençlik Merkezi iş birliğiyle 2D-3D Artist Sercan Uysal'ı konuk ediyoruz. ayyapım, ByNoGame ve ATOM firmalarında çalışmış; Adobe Photoshop, Illustrator, InDesign ve Blender uygulamalarını profesyonel olarak kullanan Uysal ile çizim yapmanın inceliklerini ve tasarım sürecini konuşacak, belirlenen konsepte göre birlikte çizimler yapacağız.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-03-15",
+        "time": "13:00",
+        "label_tr": "Draw&Talk",
+        "label_en": "Draw&Talk"
+      }
+    ],
+    "date": "2026-03-15",
+    "time": "13:00",
+    "category": "workshop",
+    "location": "Çankaya Belediyesi Gençlik Merkezi",
+    "image": "assets/events/sercan-uysal-draw-talk-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-unity-egitimi-2026",
+    "title_tr": "YAGE & DOTT: Unity Eğitimi",
+    "title_en": "",
+    "description_tr": "C# eğitiminin ardından serinin ikinci ayağı olan Unity eğitimine başlıyoruz. Unity oyun motorunun temellerinden başlayıp basit bir oyun geliştirmek için gerekenleri uygulamalarla adım adım işleyeceğiz. Temel düzeyde C# bilgisi önerilir; Visual Studio, Visual Studio Code veya başka bir IDE kullanılabilir. Eğitim kontenjanla sınırlıdır.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-03-24",
+        "time": "18:00",
+        "label_tr": "1. Ders",
+        "label_en": "Lesson 1"
+      },
+      {
+        "date": "2026-03-26",
+        "time": "18:00",
+        "label_tr": "2. Ders",
+        "label_en": "Lesson 2"
+      },
+      {
+        "date": "2026-03-28",
+        "time": "14:00",
+        "label_tr": "3. Ders",
+        "label_en": "Lesson 3"
+      }
+    ],
+    "date": "2026-03-24",
+    "time": "18:00",
+    "category": "workshop",
+    "location": "",
+    "image": "assets/events/unity-egitimi-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-rakun-game-jam-2026",
+    "title_tr": "Rakun Game Jam 2026",
+    "title_en": "Rakun Game Jam 2026",
+    "description_tr": "Gazi Üniversitesi Dijital Oyun Tasarımı Topluluğu olarak ilkini düzenlediğimiz Rakun Game Jam 2026 başlıyor. Geliştiriciler, tasarımcılar, müzisyenler ve yaratıcı fikirlerle dolu herkes 48 saat boyunca bir araya geliyor. Tek başınıza katılabilir, takımınızı etkinlikte kurabilir veya ekibinizle gelebilirsiniz. Etkinlik fiziksel olarak gerçekleşecektir; son başvuru tarihi 18 Nisan 2026'dır.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-04-24",
+        "time": "",
+        "label_tr": "1. Gün",
+        "label_en": "Day 1"
+      },
+      {
+        "date": "2026-04-25",
+        "time": "",
+        "label_tr": "2. Gün",
+        "label_en": "Day 2"
+      },
+      {
+        "date": "2026-04-26",
+        "time": "",
+        "label_tr": "3. Gün",
+        "label_en": "Day 3"
+      }
+    ],
+    "date": "2026-04-24",
+    "time": "",
+    "category": "gamejam",
+    "location": "Teknopark Ankara",
+    "image": "assets/events/rakun-game-jam-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-kutu-oyunu-tasarim-atolyesi-2026",
+    "title_tr": "Kutu Oyunu Tasarım Atölyesi",
+    "title_en": "",
+    "description_tr": "Gazi Üniversitesi Dijital Oyun Tasarımı Topluluğu ve Hacettepe Dijital Oyun Geliştirme Topluluğu ortaklığında düzenlenen atölyede hayalinizdeki kutu oyununu geliştirebilir, kutu oyunları üzerine sohbet edip yeni fikirler üretebilirsiniz.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-04-18",
+        "time": "12:00",
+        "label_tr": "Atölye",
+        "label_en": "Workshop"
+      }
+    ],
+    "date": "2026-04-18",
+    "time": "12:00",
+    "category": "workshop",
+    "location": "Çankaya Gençlik Merkezi",
+    "image": "assets/events/kutu-oyunu-tasarim-atolyesi-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-habip-sana-teatalk-2026",
+    "title_tr": "Habip Şana ile Tea&Talk",
+    "title_en": "",
+    "description_tr": "Game Developer Habip Şana'yı konuk ediyoruz. Loop Games'te Game Developer olarak çalışan, oyun geliştirme ve tasarım alanında uzman Şana ile sektördeki tecrübelerini, oyun programlamanın inceliklerini ve kariyer yolculuğunu konuşacağız.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-04-19",
+        "time": "13:00",
+        "label_tr": "Tea&Talk",
+        "label_en": "Tea&Talk"
+      }
+    ],
+    "date": "2026-04-19",
+    "time": "13:00",
+    "category": "technical",
+    "location": "Coffee 1919 Bahçeli 3. Cadde",
+    "image": "assets/events/habip-sana-teatalk-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-cizim-animasyon-2026",
+    "title_tr": "Çizim ve Animasyon Etkinliği",
+    "title_en": "",
+    "description_tr": "Çizim oturumunda 12'yi 13 Geçe serisinin yazarı ve webtoon çizeri, dijital oyun geliştiricisi ve endüstriyel tasarımcı Doğanur Işıkay; animasyon oturumunda ise animasyon teknikleri eğitimcisi, dijital oyun geliştiricisi ve endüstriyel tasarımcı Obada Abido bizlerle olacak. Birlikte çizim yapıp sohbet edeceğimiz etkinliğimize herkes davetlidir.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-04-30",
+        "time": "18:00",
+        "label_tr": "Çizim Etkinliği",
+        "label_en": "Drawing Session"
+      },
+      {
+        "date": "2026-05-01",
+        "time": "18:00",
+        "label_tr": "Animasyon Etkinliği",
+        "label_en": "Animation Session"
+      }
+    ],
+    "date": "2026-04-30",
+    "time": "18:00",
+    "category": "workshop",
+    "location": "Teknoloji Fakültesi Samsung Lab",
+    "image": "assets/events/cizim-animasyon-etkinligi-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-gazi-bkft-dott-japon-kultur-frp-2026",
+    "title_tr": "Gazi BKFT × DOTT × Japon Kültür FRP Etkinliği",
+    "title_en": "",
+    "description_tr": "Gazi BKFT, DOTT ve Japon Kültür topluluklarıyla birlikte FRP etkinliği için toplanıyoruz. Oyuncu olarak katılacak herkesi bekliyoruz. Kontenjan sınırlıdır.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-05-10",
+        "time": "13:00",
+        "label_tr": "FRP Etkinliği",
+        "label_en": "FRP Event"
+      }
+    ],
+    "date": "2026-05-10",
+    "time": "13:00",
+    "category": "social",
+    "location": "Saraçoğlu Gençlik Merkezi",
+    "image": "assets/events/gazi-bkft-dott-japon-kultur-frp-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-blender-egitimi-2026",
+    "title_tr": "Blender Eğitimi",
+    "title_en": "",
+    "description_tr": "Blender programını ezberleyerek değil, işin mantığını kavrayarak ve uygulayarak öğrenebileceğiniz eğitimimize herkesi bekliyoruz. Her ders bir öncekinin üzerine ekleneceği için düzenli katılım önemlidir.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2026-05-12",
+        "time": "18:00",
+        "label_tr": "1. Ders",
+        "label_en": "Lesson 1"
+      },
+      {
+        "date": "2026-05-13",
+        "time": "18:00",
+        "label_tr": "2. Ders",
+        "label_en": "Lesson 2"
+      },
+      {
+        "date": "2026-05-14",
+        "time": "18:00",
+        "label_tr": "3. Ders",
+        "label_en": "Lesson 3"
+      }
+    ],
+    "date": "2026-05-12",
+    "time": "18:00",
+    "category": "workshop",
+    "location": "Teknoloji Fakültesi Samsung Lab",
+    "image": "assets/events/blender-egitimi-2026.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
+  },
+  {
+    "id": "event-gazi-dott-yage-etkinlik-aksami",
+    "title_tr": "Gazi DOTT × YAGE Etkinlik Akşamı",
+    "title_en": "",
+    "description_tr": "Gazi DOTT ve YAGE ekipleri olarak akademik yoğunluğa kısa bir ara vermek ve topluluklar arası sinerjiyi artırmak için bir araya geliyoruz. Açılış konuşmalarıyla başlayacak program; strateji ve dikkat gerektiren Vampir & Köylü, genel kültür bilgilerinizi sınayabileceğiniz özel hazırlanmış Kahoot yarışması ve Sessiz Sinema etkinlikleriyle devam edecek. Sizleri de aramızda görmekten mutluluk duyarız.",
+    "description_en": "",
+    "sessions": [
+      {
+        "date": "2025-12-20",
+        "time": "14:00",
+        "label_tr": "Ortak Etkinlik",
+        "label_en": "Joint Event"
+      }
+    ],
+    "date": "2025-12-20",
+    "time": "14:00",
+    "category": "social",
+    "location": "Kızılay Saraçoğlu Mahallesi Gençlik Merkezi",
+    "image": "assets/events/gazi-dott-yage-etkinlik-aksami.webp",
+    "links": [],
+    "link": "",
+    "createdAt": "2026-07-18T00:00:00.000Z"
   }
 ]

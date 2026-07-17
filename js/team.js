@@ -158,32 +158,40 @@ async function renderTeamMembers() {
 
     if (members.length === 0) {
         container.innerHTML = `
-            <div class="col-span-full text-center py-8 text-text-muted">
-                <span class="material-symbols-outlined text-4xl mb-2 block">group</span>
-                <p>${currentLang === 'tr' ? 'Ekip bilgileri yakında eklenecektir.' : 'Team information will be added soon.'}</p>
+            <div class="hud-panel-muted col-span-full flex min-h-52 flex-col items-center justify-center px-6 py-12 text-center text-text-muted">
+                <span class="material-symbols-outlined mb-3 block text-4xl text-primary">group</span>
+                <p class="text-sm">${currentLang === 'tr' ? 'Ekip bilgileri yakında eklenecektir.' : 'Team information will be added soon.'}</p>
             </div>`;
         return;
     }
 
-    container.innerHTML = members.map(member => {
+    container.innerHTML = members.map((member, index) => {
         const safeName = escapeHTML(getMemberName(member));
         const safePhoto = escapeHTML(member.photo);
         const safeRole = escapeHTML(getMemberRole(member));
 
         return `
-        <div class="bg-card-dark border border-border-dark rounded-xl p-6 text-center hover:border-primary/30 transition-all card-hover">
-            ${member.photo
-                ? `<img src="${safePhoto}" alt="${safeName}" class="h-20 w-20 mx-auto rounded-full object-cover mb-4 border-2 border-primary/20" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
-                   <div class="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-primary/30 to-primary/10 items-center justify-center mb-4 border border-primary/20 hidden">
-                       <span class="material-symbols-outlined text-primary text-[32px]">person</span>
-                   </div>`
-                : `<div class="h-20 w-20 mx-auto rounded-full bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center mb-4 border border-primary/20">
-                       <span class="material-symbols-outlined text-primary text-[32px]">person</span>
-                   </div>`
-            }
-            <h3 class="text-lg font-bold text-white mb-1">${safeName}</h3>
-            <p class="text-sm text-primary font-medium">${safeRole}</p>
-        </div>`;
+        <article class="hud-panel card-hover group p-5">
+            <div class="mb-5 flex items-center justify-between border-b border-border-dark/70 pb-3">
+                <span class="text-[10px] font-bold uppercase text-text-muted">${t('label.coreTeam')}</span>
+                <span class="font-mono text-xs text-primary">${String(index + 1).padStart(2, '0')}</span>
+            </div>
+            <div class="flex items-center gap-4">
+                ${member.photo
+                    ? `<img src="${safePhoto}" alt="${safeName}" class="h-16 w-16 shrink-0 rounded-lg border border-primary/25 object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                       <div class="hidden h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10">
+                           <span class="material-symbols-outlined text-[28px] text-primary">person</span>
+                       </div>`
+                    : `<div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10">
+                           <span class="material-symbols-outlined text-[28px] text-primary">person</span>
+                       </div>`
+                }
+                <div class="min-w-0 text-left">
+                    <h3 class="truncate text-base font-bold text-white transition-colors group-hover:text-primary">${safeName}</h3>
+                    <p class="mt-1 text-sm font-medium text-text-muted">${safeRole}</p>
+                </div>
+            </div>
+        </article>`;
     }).join('');
 }
 

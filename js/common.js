@@ -73,28 +73,30 @@ function getNavbarHTML() {
     const desktopLinks = navLinks.map(link => {
         const isActive = page === link.id;
         const classes = isActive
-            ? 'text-sm font-bold text-primary'
-            : 'text-sm font-medium text-text-muted hover:text-primary transition-colors';
-        return `<a class="${classes}" href="${link.href}" data-i18n="${link.key}">${t(link.key)}</a>`;
+            ? 'inline-flex min-h-9 items-center rounded-lg border border-primary/30 bg-primary/10 px-3 text-sm font-bold text-primary'
+            : 'inline-flex min-h-9 items-center rounded-lg border border-transparent px-3 text-sm font-medium text-text-muted transition-colors hover:border-border-dark hover:bg-card-dark/60 hover:text-white';
+        return `<a class="${classes}" href="${link.href}" ${isActive ? 'aria-current="page"' : ''} data-i18n="${link.key}">${t(link.key)}</a>`;
     }).join('\n                    ');
 
     const mobileLinks = navLinks.map(link => {
         const isActive = page === link.id;
         const classes = isActive
-            ? 'block px-4 py-3 text-base font-bold text-primary border-l-2 border-primary bg-primary/5'
-            : 'block px-4 py-3 text-base font-medium text-text-muted hover:text-white hover:bg-card-dark/50 transition-colors border-l-2 border-transparent';
-        return `<a class="${classes}" href="${link.href}" data-i18n="${link.key}">${t(link.key)}</a>`;
+            ? 'block border-l-2 border-primary bg-primary/10 px-5 py-3 text-base font-bold text-primary'
+            : 'block border-l-2 border-transparent px-5 py-3 text-base font-medium text-text-muted transition-colors hover:bg-card-dark/60 hover:text-white';
+        return `<a class="${classes}" href="${link.href}" ${isActive ? 'aria-current="page"' : ''} data-i18n="${link.key}">${t(link.key)}</a>`;
     }).join('\n                    ');
 
     return `
-    <header id="main-navbar" class="sticky top-0 z-50 w-full border-b border-border-dark bg-background-dark/95 backdrop-blur supports-[backdrop-filter]:bg-background-dark/80">
-        <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center gap-8">
-                <a class="flex items-center gap-3 text-white transition hover:opacity-90" href="index.html">
-                    <img src="ClubLogo.jpeg" alt="Gazi DOTT" class="h-9 w-9 rounded-lg object-cover" />
-                    <span class="font-display text-lg font-bold tracking-tight">Gazi DOTT</span>
+    <header id="main-navbar" class="sticky top-0 z-50 w-full border-b border-border-dark bg-background-dark/90 shadow-[0_12px_38px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+        <div class="mx-auto flex h-[72px] max-w-[1180px] items-center justify-between px-4 sm:px-6">
+            <div class="flex min-w-0 items-center gap-7">
+                <a class="group flex min-w-0 items-center gap-3 text-white" href="index.html" aria-label="Gazi DOTT ana sayfa">
+                    <span class="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-primary/40 bg-primary shadow-[5px_5px_0_rgba(244,140,37,0.12)] transition-transform group-hover:-translate-y-0.5">
+                        <img src="ClubLogo.jpeg" alt="" class="h-full w-full object-cover" />
+                    </span>
+                    <span class="truncate font-display text-base font-bold sm:text-lg">Gazi DOTT</span>
                 </a>
-                <nav class="hidden md:flex items-center gap-6">
+                <nav class="hidden items-center gap-1 md:flex" aria-label="Ana navigasyon">
                     ${desktopLinks}
                 </nav>
             </div>
@@ -103,31 +105,30 @@ function getNavbarHTML() {
                     <button data-lang="tr" class="${currentLang === 'tr' ? 'active' : ''}">TR</button>
                     <button data-lang="en" class="${currentLang === 'en' ? 'active' : ''}">EN</button>
                 </div>
-                <a href="https://linktr.ee/gazidott" target="_blank" id="join-community-btn"
-                    class="hidden sm:inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-bold text-background-dark shadow-sm hover:bg-orange-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-all"
-                    data-i18n="nav.joinCommunity">${t('nav.joinCommunity')}</a>
-                <button id="mobile-menu-btn" class="md:hidden p-2 text-text-muted hover:text-white transition-colors">
+                <a href="https://linktr.ee/gazidott" target="_blank" rel="noopener noreferrer" id="join-community-btn"
+                    class="command-button command-button-primary hidden sm:inline-flex"
+                    data-i18n="nav.joinCommunity">${t('nav.joinCommunity')}<span class="material-symbols-outlined text-[18px]">north_east</span></a>
+                <button id="mobile-menu-btn" type="button" aria-label="Menüyü aç" aria-controls="mobile-menu-panel" aria-expanded="false" class="grid h-10 w-10 place-items-center rounded-lg border border-border-dark text-text-muted transition-colors hover:border-primary/40 hover:text-white md:hidden">
                     <span class="material-symbols-outlined text-[24px]">menu</span>
                 </button>
             </div>
         </div>
     </header>
-    <!-- Mobile menu (outside header to avoid stacking context issues) -->
-    <div id="mobile-menu-overlay" class="fixed inset-0 bg-black/50 z-[998] hidden" onclick="closeMobileMenu()"></div>
-    <div id="mobile-menu-panel" class="fixed top-0 right-0 bottom-0 w-72 bg-background-dark border-l border-border-dark z-[999] translate-x-full overflow-y-auto">
-        <div class="flex items-center justify-between p-4 border-b border-border-dark">
+    <div id="mobile-menu-overlay" class="fixed inset-0 z-[998] hidden bg-black/70 backdrop-blur-sm" onclick="closeMobileMenu()"></div>
+    <div id="mobile-menu-panel" class="fixed bottom-0 right-0 top-0 z-[999] w-80 max-w-[calc(100vw-2rem)] translate-x-full overflow-y-auto border-l border-border-dark bg-background-dark/95 shadow-2xl backdrop-blur-xl" aria-hidden="true">
+        <div class="flex h-[72px] items-center justify-between border-b border-border-dark px-5">
             <span class="font-display text-lg font-bold text-white">Gazi DOTT</span>
-            <button onclick="closeMobileMenu()" class="p-2 text-text-muted hover:text-white transition-colors">
+            <button type="button" onclick="closeMobileMenu()" aria-label="Menüyü kapat" class="grid h-10 w-10 place-items-center rounded-lg border border-border-dark text-text-muted transition-colors hover:border-primary/40 hover:text-white">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
-        <nav class="py-4">
+        <nav class="py-5" aria-label="Mobil navigasyon">
             ${mobileLinks}
         </nav>
         <div class="p-4 border-t border-border-dark">
-            <a href="https://linktr.ee/gazidott" target="_blank" id="join-community-btn-mobile"
-                class="block w-full text-center rounded-lg bg-primary px-4 py-3 text-sm font-bold text-background-dark hover:bg-orange-400 transition-all"
-                data-i18n="nav.joinCommunity">${t('nav.joinCommunity')}</a>
+            <a href="https://linktr.ee/gazidott" target="_blank" rel="noopener noreferrer" id="join-community-btn-mobile"
+                class="command-button command-button-primary w-full"
+                data-i18n="nav.joinCommunity">${t('nav.joinCommunity')}<span class="material-symbols-outlined text-[18px]">north_east</span></a>
         </div>
     </div>`;
 }
@@ -137,18 +138,23 @@ function getNavbarHTML() {
  */
 function getFooterHTML() {
     return `
-    <footer class="bg-background-dark border-t border-border-dark py-12 text-sm">
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+    <footer class="border-t border-border-dark bg-background-dark/80 py-8 text-sm">
+        <div class="mx-auto max-w-[1180px] px-4 sm:px-6">
+            <div class="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div class="flex items-center gap-3">
-                    <img src="ClubLogo.jpeg" alt="Gazi DOTT" class="h-8 w-8 rounded-lg object-cover" />
-                    <span class="font-display font-bold text-white">Gazi DOTT</span>
+                    <span class="h-9 w-9 overflow-hidden rounded-lg border border-primary/30 bg-primary">
+                        <img src="ClubLogo.jpeg" alt="" class="h-full w-full object-cover" />
+                    </span>
+                    <div>
+                        <span class="block font-display font-bold text-white">Gazi DOTT</span>
+                        <span class="block text-[10px] font-bold uppercase text-primary">Play / Make / Share</span>
+                    </div>
                 </div>
-                <div class="flex gap-6 text-text-muted">
+                <div class="flex flex-wrap gap-x-6 gap-y-2 text-text-muted">
                     <a class="hover:text-primary transition-colors" href="contact.html" data-i18n="footer.contactUs">${t('footer.contactUs')}</a>
                     <a class="hover:text-primary transition-colors" href="about.html" data-i18n="footer.codeOfConduct">${t('footer.codeOfConduct')}</a>
                 </div>
-                <div class="text-text-muted" data-i18n="footer.copyright">
+                <div class="text-text-muted md:text-right" data-i18n="footer.copyright">
                     ${t('footer.copyright')}
                 </div>
             </div>
@@ -166,6 +172,8 @@ function openMobileMenu() {
     setTimeout(() => {
         panel.classList.remove('translate-x-full');
     }, 10);
+    panel.setAttribute('aria-hidden', 'false');
+    document.getElementById('mobile-menu-btn')?.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
 }
 
@@ -176,6 +184,8 @@ function closeMobileMenu() {
     setTimeout(() => {
         overlay.classList.add('hidden');
     }, 300);
+    panel.setAttribute('aria-hidden', 'true');
+    document.getElementById('mobile-menu-btn')?.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
 }
 
@@ -225,6 +235,10 @@ function initCommon() {
             menuBtn.addEventListener('click', openMobileMenu);
         }
     }, 0);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeMobileMenu();
+    });
 
     // Initialize i18n
     initI18n();

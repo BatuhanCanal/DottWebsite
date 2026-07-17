@@ -4,58 +4,53 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Etkinlikler — Gazi DOTT</title>
-    <meta name="description" content="Gazi DOTT etkinlikleri — atölye çalışmaları, buluşmalar ve daha fazlası." />
+    <title>Etkinlikler - Gazi DOTT</title>
+    <meta name="description" content="Gazi DOTT etkinlikleri - atölye çalışmaları, buluşmalar ve daha fazlası." />
+    <link rel="canonical" href="https://gazidott.org/events.html" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     <link href="css/style.css" rel="stylesheet" />
     <script src="js/tailwind-config.js"></script>
 </head>
 
-<body
-    class="bg-background-dark text-slate-100 min-h-screen flex flex-col overflow-x-hidden antialiased selection:bg-primary selection:text-white">
-
+<body class="flex min-h-screen flex-col overflow-x-hidden bg-background-dark text-white antialiased">
     <div id="navbar-placeholder"></div>
 
-    <main class="flex-grow">
-        <!-- Page Header -->
-        <section class="border-b border-border-dark bg-card-dark/30 py-12">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-                <h1 class="font-display text-4xl font-black tracking-tight text-white sm:text-5xl mb-4"
-                    data-i18n="events.title">Etkinlikler</h1>
-                <p class="text-lg text-text-muted max-w-2xl mx-auto" data-i18n="events.subtitle">Tüm atölye çalışmaları,
-                    buluşmalar ve etkinliklerimiz.</p>
+    <main class="site-main flex-grow">
+        <section class="page-hero py-16 sm:py-20">
+            <div class="section-shell">
+                <span class="section-kicker" data-i18n="label.eventBoardIndex">Etkinlik Panosu / 01</span>
+                <h1 class="section-title animate-fade-in-up" data-i18n="events.title">Etkinlikler</h1>
+                <p class="section-copy animate-fade-in-up-delay-1" data-i18n="events.subtitle">Tüm atölye çalışmaları, buluşmalar ve etkinliklerimiz.</p>
             </div>
         </section>
 
-        <!-- Filter Bar -->
-        <section class="border-b border-border-dark bg-background-dark sticky top-16 z-40 shadow-md">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div id="filter-buttons" class="flex items-center gap-2 overflow-x-auto py-4 no-scrollbar">
-                    <!-- Dynamically populated by buildFilterBar() -->
-                </div>
+        <section class="sticky top-[72px] z-40 border-b border-border-dark bg-background-dark/90 shadow-lg backdrop-blur-xl">
+            <div class="section-shell">
+                <div id="filter-buttons" class="no-scrollbar flex items-center gap-2 overflow-x-auto py-3"></div>
             </div>
         </section>
 
-        <!-- Events Grid -->
-        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-            <div id="events-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Dynamically populated -->
-            </div>
+        <section class="py-14 sm:py-16">
+            <div class="section-shell">
+                <div class="mb-7 flex items-center gap-3">
+                    <span class="signal-dot" aria-hidden="true"></span>
+                    <h2 class="text-sm font-bold uppercase text-text-muted" data-i18n="home.upcomingEvents">Yaklaşan Etkinlikler</h2>
+                </div>
+                <div id="events-grid" class="grid grid-cols-1 gap-5 md:grid-cols-2"></div>
 
-            <!-- Past Events -->
-            <div class="mt-16 pt-10 border-t border-border-dark">
-                <h2 class="text-xl font-bold text-text-muted mb-6" data-i18n="events.past">Geçmiş Etkinlikler</h2>
-                <div id="past-events-list" class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <!-- Dynamically populated -->
+                <div class="mt-16 border-t border-border-dark pt-10 sm:mt-20">
+                    <div class="mb-7 flex items-center gap-3">
+                        <span class="h-px w-8 bg-primary" aria-hidden="true"></span>
+                        <h2 class="text-xl font-bold text-white" data-i18n="events.past">Geçmiş Etkinlikler</h2>
+                    </div>
+                    <div id="past-events-list" class="grid grid-cols-1 gap-5 md:grid-cols-2"></div>
                 </div>
             </div>
-        </div>
+        </section>
     </main>
 
     <div id="footer-placeholder"></div>
@@ -68,12 +63,11 @@
 
         function filterEvents(filter) {
             currentFilter = filter;
-            // Update button styles
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 if (btn.getAttribute('data-filter') === filter) {
-                    btn.className = 'filter-btn whitespace-nowrap rounded-full bg-primary px-4 py-1.5 text-sm font-bold text-background-dark';
+                    btn.className = 'filter-btn min-h-10 whitespace-nowrap rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-bold text-background-dark';
                 } else {
-                    btn.className = 'filter-btn whitespace-nowrap rounded-full border border-border-dark bg-transparent px-4 py-1.5 text-sm font-medium text-text-muted hover:border-primary hover:text-white transition-colors';
+                    btn.className = 'filter-btn min-h-10 whitespace-nowrap rounded-lg border border-border-dark bg-card-dark/45 px-4 py-2 text-sm font-medium text-text-muted transition-colors hover:border-primary/60 hover:text-white';
                 }
             });
             renderEvents(filter);

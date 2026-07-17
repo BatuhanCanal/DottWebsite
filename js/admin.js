@@ -8,6 +8,10 @@
 
 const ADMIN_SESSION_KEY = 'dott-admin-session';
 const ADMIN_PASSWORD_HASH_KEY = 'dott-admin-password-hash';
+const ADMIN_DIRTY_KEY = 'dott-admin-unsynced-changes';
+const EVENT_IMAGE_DELETION_KEY = 'dott-pending-event-image-deletions';
+const EVENT_IMAGE_MAX_SOURCE_BYTES = 12 * 1024 * 1024;
+const EVENT_IMAGE_TARGET_BYTES = 700 * 1024;
 
 // Currently editing event/member/category
 let editingEventId = null;
@@ -16,6 +20,7 @@ let editingCategoryId = null;
 // Current selected image URL/data URI
 let currentEventImage = '';
 let currentMemberPhoto = '';
+let isEventImageProcessing = false;
 // Current selected color for category
 let currentCategoryColor = 'blue';
 
@@ -80,6 +85,55 @@ function generateClientId(prefix) {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function hasUnsyncedChanges() {
+    return localStorage.getItem(ADMIN_DIRTY_KEY) === '1';
+}
+
+function markUnsyncedChanges() {
+    localStorage.setItem(ADMIN_DIRTY_KEY, '1');
+    updatePublishStatus();
+}
+
+function clearUnsyncedChanges() {
+    localStorage.removeItem(ADMIN_DIRTY_KEY);
+    updatePublishStatus();
+}
+
+function updatePublishStatus() {
+    const status = document.getElementById('admin-publish-status');
+    if (!status) return;
+
+    const pending = hasUnsyncedChanges();
+    const icon = status.querySelector('.material-symbols-outlined');
+    const label = status.querySelector('[data-i18n]');
+    const key = pending ? 'admin.changesPending' : 'admin.allChangesPublished';
+    if (icon) icon.textContent = pending ? 'cloud_upload' : 'cloud_done';
+    if (label) {
+        label.dataset.i18n = key;
+        label.textContent = t(key);
+    }
+    status.classList.toggle('text-primary', pending);
+    status.classList.toggle('text-text-muted', !pending);
+}
+
+function isManagedEventImagePath(path) {
+    return typeof path === 'string' && /^assets\/events\/[a-zA-Z0-9._/-]+$/.test(path);
+}
+
+function queueEventImageDeletion(path) {
+    if (!isManagedEventImagePath(path)) return;
+    let queued = [];
+    try {
+        queued = JSON.parse(localStorage.getItem(EVENT_IMAGE_DELETION_KEY) || '[]');
+    } catch {
+        queued = [];
+    }
+    if (!queued.includes(path)) {
+        queued.push(path);
+        localStorage.setItem(EVENT_IMAGE_DELETION_KEY, JSON.stringify(queued));
+    }
+}
+
 /* ========================================
    Event CRUD (local storage)
    ======================================== */
@@ -93,6 +147,7 @@ async function addEvent(eventData) {
     };
     events.push(created);
     setEventsData(events);
+    markUnsyncedChanges();
     return created;
 }
 
@@ -101,27 +156,34 @@ async function updateEvent(id, data) {
     const idx = events.findIndex(e => e.id === id);
     if (idx === -1) throw new Error('Event not found');
 
+    const previousImage = events[idx].image || '';
     events[idx] = {
         ...events[idx],
         ...data,
         id,
         updatedAt: new Date().toISOString()
     };
+    if (previousImage !== events[idx].image) queueEventImageDeletion(previousImage);
     setEventsData(events);
+    markUnsyncedChanges();
 }
 
 async function deleteEvent(id) {
     const events = await getEvents();
     const filtered = events.filter(e => e.id !== id);
     if (filtered.length === events.length) throw new Error('Event not found');
+    queueEventImageDeletion(events.find(e => e.id === id)?.image);
     setEventsData(filtered);
+    markUnsyncedChanges();
 }
 
 async function deletePastEvents() {
     const now = Date.now();
     const events = await getEvents();
-    const filtered = events.filter(e => new Date(e.date).getTime() >= now);
+    const filtered = events.filter(e => isEventUpcoming(e, now));
+    events.filter(e => !isEventUpcoming(e, now)).forEach(e => queueEventImageDeletion(e.image));
     setEventsData(filtered);
+    markUnsyncedChanges();
 }
 
 /* ========================================
@@ -145,6 +207,7 @@ async function addCategory(data) {
     };
     categories.push(created);
     setCategoriesData(categories);
+    markUnsyncedChanges();
     return created;
 }
 
@@ -159,6 +222,7 @@ async function updateCategory(id, data) {
         id
     };
     setCategoriesData(categories);
+    markUnsyncedChanges();
 }
 
 async function deleteCategory(id) {
@@ -166,6 +230,7 @@ async function deleteCategory(id) {
     const filtered = categories.filter(c => c.id !== id);
     if (filtered.length === categories.length) throw new Error('Category not found');
     setCategoriesData(filtered);
+    markUnsyncedChanges();
 }
 
 /* ========================================
@@ -181,6 +246,190 @@ async function uploadImageFile(file) {
         reader.onload = () => resolve(reader.result);
         reader.onerror = () => reject(new Error('Upload failed'));
         reader.readAsDataURL(file);
+    });
+}
+
+function formatFileSize(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
+    if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function setEventImageStatus(message = '', state = 'info') {
+    const status = document.getElementById('event-image-status');
+    const icon = document.getElementById('event-image-status-icon');
+    const text = document.getElementById('event-image-status-text');
+    if (!status || !text || !icon) return;
+
+    status.classList.toggle('hidden', !message);
+    status.classList.toggle('flex', Boolean(message));
+    status.classList.remove('text-text-muted', 'text-primary', 'text-green-400', 'text-red-400');
+    const states = {
+        processing: ['progress_activity', 'text-primary'],
+        ready: ['check_circle', 'text-green-400'],
+        pending: ['cloud_upload', 'text-primary'],
+        error: ['error', 'text-red-400'],
+        info: ['info', 'text-text-muted']
+    };
+    const [iconName, colorClass] = states[state] || states.info;
+    icon.textContent = iconName;
+    icon.classList.toggle('animate-spin', state === 'processing');
+    status.classList.add(colorClass);
+    text.textContent = message;
+}
+
+function showEventImagePreview(src) {
+    const preview = document.getElementById('event-image-preview');
+    const wrap = document.getElementById('event-image-preview-wrap');
+    if (!preview || !wrap || !src) return;
+    preview.src = src;
+    wrap.classList.remove('hidden');
+}
+
+function hideEventImagePreview() {
+    const preview = document.getElementById('event-image-preview');
+    const wrap = document.getElementById('event-image-preview-wrap');
+    if (preview) preview.removeAttribute('src');
+    if (wrap) wrap.classList.add('hidden');
+}
+
+function clearEventImage() {
+    currentEventImage = '';
+    const fileInput = document.getElementById('event-image-file');
+    const urlInput = document.getElementById('event-image-url');
+    if (fileInput) fileInput.value = '';
+    if (urlInput) urlInput.value = '';
+    hideEventImagePreview();
+    setEventImageStatus();
+}
+
+async function loadImageSource(file) {
+    if ('createImageBitmap' in window) {
+        const bitmap = await createImageBitmap(file);
+        return {
+            source: bitmap,
+            width: bitmap.width,
+            height: bitmap.height,
+            cleanup: () => bitmap.close()
+        };
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    try {
+        await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = reject;
+            image.src = objectUrl;
+        });
+        return {
+            source: image,
+            width: image.naturalWidth,
+            height: image.naturalHeight,
+            cleanup: () => URL.revokeObjectURL(objectUrl)
+        };
+    } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        throw error;
+    }
+}
+
+function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Image encoding failed')), type, quality);
+    });
+}
+
+async function optimizeEventImage(file) {
+    const loaded = await loadImageSource(file);
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) {
+        loaded.cleanup();
+        throw new Error('Canvas is not supported');
+    }
+
+    let scale = Math.min(1, 1600 / loaded.width, 1200 / loaded.height);
+    let output = null;
+    try {
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            canvas.width = Math.max(1, Math.round(loaded.width * scale));
+            canvas.height = Math.max(1, Math.round(loaded.height * scale));
+            context.fillStyle = '#111111';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.imageSmoothingEnabled = true;
+            context.imageSmoothingQuality = 'high';
+            context.drawImage(loaded.source, 0, 0, canvas.width, canvas.height);
+            output = await canvasToBlob(canvas, 'image/webp', Math.max(0.62, 0.84 - (attempt * 0.06)));
+            if (output.size <= EVENT_IMAGE_TARGET_BYTES || canvas.width <= 960) break;
+            scale *= 0.82;
+        }
+    } finally {
+        loaded.cleanup();
+    }
+
+    if (!output) throw new Error('Image encoding failed');
+    return output;
+}
+
+async function handleEventImageFile(file) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!file || !allowedTypes.includes(file.type)) {
+        showToast(t('admin.imageUnsupported'), 'error');
+        return;
+    }
+    if (file.size > EVENT_IMAGE_MAX_SOURCE_BYTES) {
+        showToast(t('admin.imageTooLarge'), 'error');
+        return;
+    }
+
+    isEventImageProcessing = true;
+    setEventImageStatus(t('admin.eventImageProcessing'), 'processing');
+    try {
+        const optimized = await optimizeEventImage(file);
+        const dataUrl = await uploadImageFile(optimized);
+        currentEventImage = dataUrl;
+        const urlInput = document.getElementById('event-image-url');
+        if (urlInput) urlInput.value = '';
+        showEventImagePreview(dataUrl);
+        const message = t('admin.eventImageReady')
+            .replace('{before}', formatFileSize(file.size))
+            .replace('{after}', formatFileSize(optimized.size));
+        setEventImageStatus(message, 'ready');
+    } catch (error) {
+        console.error(error);
+        clearEventImage();
+        showToast(t('admin.imageOptimizeFailed'), 'error');
+    } finally {
+        isEventImageProcessing = false;
+    }
+}
+
+function setupEventImageUpload() {
+    const dropZone = document.getElementById('event-image-drop');
+    const fileInput = document.getElementById('event-image-file');
+    if (!dropZone || !fileInput) return;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, event => {
+            event.preventDefault();
+            dropZone.classList.add('border-primary', 'bg-primary/5');
+        });
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, event => {
+            event.preventDefault();
+            dropZone.classList.remove('border-primary', 'bg-primary/5');
+        });
+    });
+    dropZone.addEventListener('drop', event => {
+        const file = event.dataTransfer?.files?.[0];
+        if (file) handleEventImageFile(file);
+    });
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', event => {
+        const file = event.target.files?.[0];
+        if (file) handleEventImageFile(file);
     });
 }
 
@@ -278,10 +527,19 @@ function setupUrlInput(inputId, previewId, onImageSet) {
         if (preview) {
             if (url) {
                 preview.src = url;
-                preview.classList.remove('hidden');
-                preview.onerror = () => preview.classList.add('hidden');
+                if (previewId === 'event-image-preview') {
+                    showEventImagePreview(url);
+                    setEventImageStatus();
+                } else {
+                    preview.classList.remove('hidden');
+                }
+                preview.onerror = () => {
+                    if (previewId === 'event-image-preview') hideEventImagePreview();
+                    else preview.classList.add('hidden');
+                };
             } else {
-                preview.classList.add('hidden');
+                if (previewId === 'event-image-preview') hideEventImagePreview();
+                else preview.classList.add('hidden');
             }
         }
         if (onImageSet) onImageSet(url);
@@ -335,10 +593,10 @@ async function renderAdminEvents() {
     }
 
     // Separate upcoming and past
-    const upcoming = events.filter(e => new Date(e.date).getTime() >= now)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const past = events.filter(e => new Date(e.date).getTime() < now)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const upcoming = events.filter(e => isEventUpcoming(e, now))
+        .sort((a, b) => getEventSortTimestamp(a, now) - getEventSortTimestamp(b, now));
+    const past = events.filter(e => !isEventUpcoming(e, now))
+        .sort((a, b) => getEventSortTimestamp(b, now) - getEventSortTimestamp(a, now));
 
     let html = '';
 
@@ -386,9 +644,14 @@ function renderAdminEventCard(event, isUpcoming) {
 
     const safeTitle = escapeHTML(event.title_tr || event.title_en);
     const safeImage = escapeHTML(event.image);
-    const safeTime = escapeHTML(event.time);
     const safeLocation = escapeHTML(event.location);
     const safeId = escapeHTML(event.id);
+    const sessions = getEventSessions(event);
+    const displaySession = getEventDisplaySession(event);
+    const sessionLabel = displaySession
+        ? `${formatDate(displaySession.date)}${displaySession.time ? ` · ${escapeHTML(displaySession.time)}` : ''}`
+        : '';
+    const imagePending = typeof event.image === 'string' && event.image.startsWith('data:image/');
 
     return `
     <div class="bg-card-dark border border-border-dark rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 ${!isUpcoming ? 'opacity-60' : ''} hover:border-border-dark/80 transition-all">
@@ -402,11 +665,12 @@ function renderAdminEventCard(event, isUpcoming) {
                     ${statusDot}
                     <h4 class="font-bold text-white truncate text-sm">${safeTitle}</h4>
                 </div>
-                <p class="text-xs text-text-muted">${formatDate(event.date)} ${safeTime ? '• ' + safeTime : ''}</p>
+                <p class="text-xs text-text-muted">${sessionLabel}${sessions.length > 1 ? ` · ${sessions.length} ${escapeHTML(t('events.session'))}` : ''}</p>
                 <div class="flex items-center gap-2 mt-1">
                     ${getCategoryBadge(event.category)}
                     ${safeLocation ? `<span class="text-xs text-text-muted">${safeLocation}</span>` : ''}
                 </div>
+                ${imagePending ? `<p class="mt-1 flex items-center gap-1 text-[11px] text-primary"><span class="material-symbols-outlined text-[14px]">cloud_upload</span>${escapeHTML(t('admin.pendingImageUpload'))}</p>` : ''}
             </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
@@ -512,6 +776,164 @@ async function renderAdminTeam() {
 }
 
 /* ========================================
+   Dynamic Event Sessions & Links
+   ======================================== */
+
+const adminFieldClass = 'block w-full rounded-lg border border-border-dark bg-background-dark px-3 py-2.5 text-sm text-white placeholder:text-text-muted/50 focus:border-primary focus:ring-1 focus:ring-primary';
+
+function refreshEventSessionRows() {
+    const rows = Array.from(document.querySelectorAll('#event-sessions-list [data-session-row]'));
+    rows.forEach((row, index) => {
+        const number = row.querySelector('[data-session-number]');
+        const removeButton = row.querySelector('[data-remove-session]');
+        if (number) number.textContent = String(index + 1).padStart(2, '0');
+        if (removeButton) {
+            removeButton.disabled = rows.length === 1;
+            removeButton.classList.toggle('opacity-30', rows.length === 1);
+            removeButton.classList.toggle('pointer-events-none', rows.length === 1);
+        }
+    });
+}
+
+function addEventSessionRow(session = {}) {
+    const container = document.getElementById('event-sessions-list');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.dataset.sessionRow = '';
+    row.className = 'rounded-lg border border-border-dark bg-background-dark/40 p-3';
+    row.innerHTML = `
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <span class="font-mono text-xs font-bold text-primary" data-session-number></span>
+            <button type="button" data-remove-session onclick="removeEventSessionRow(this)"
+                class="grid h-8 w-8 place-items-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 transition-colors hover:bg-red-500/20"
+                title="${escapeHTML(t('admin.removeDate'))}" aria-label="${escapeHTML(t('admin.removeDate'))}">
+                <span class="material-symbols-outlined text-[17px]">delete</span>
+            </button>
+        </div>
+        <div class="grid gap-2 sm:grid-cols-2">
+            <div>
+                <label class="mb-1 block text-[11px] text-text-muted" data-i18n="admin.sessionLabelTr">${t('admin.sessionLabelTr')}</label>
+                <input type="text" data-session-label-tr class="${adminFieldClass}" value="${escapeHTML(session.label_tr || '')}" placeholder="Ör: 1. Ders" />
+            </div>
+            <div>
+                <label class="mb-1 block text-[11px] text-text-muted" data-i18n="admin.sessionLabelEn">${t('admin.sessionLabelEn')}</label>
+                <input type="text" data-session-label-en class="${adminFieldClass}" value="${escapeHTML(session.label_en || '')}" placeholder="E.g. Lesson 1" />
+            </div>
+        </div>
+        <div class="mt-2 grid grid-cols-2 gap-2">
+            <div>
+                <label class="mb-1 block text-[11px] text-text-muted" data-i18n="admin.eventDate">${t('admin.eventDate')}</label>
+                <input type="date" data-session-date class="${adminFieldClass}" value="${escapeHTML(session.date || '')}" required />
+            </div>
+            <div>
+                <label class="mb-1 block text-[11px] text-text-muted" data-i18n="admin.eventTime">${t('admin.eventTime')}</label>
+                <input type="time" data-session-time class="${adminFieldClass}" value="${escapeHTML(session.time || '')}" />
+            </div>
+        </div>`;
+    container.appendChild(row);
+    refreshEventSessionRows();
+}
+
+function removeEventSessionRow(button) {
+    const container = document.getElementById('event-sessions-list');
+    if (!container || container.children.length <= 1) return;
+    button.closest('[data-session-row]')?.remove();
+    refreshEventSessionRows();
+}
+
+function setEventSessionsForm(sessions) {
+    const container = document.getElementById('event-sessions-list');
+    if (!container) return;
+    container.innerHTML = '';
+    const normalized = Array.isArray(sessions) && sessions.length > 0 ? sessions : [{}];
+    normalized.forEach(session => addEventSessionRow(session));
+}
+
+function collectEventSessions() {
+    return Array.from(document.querySelectorAll('#event-sessions-list [data-session-row]'))
+        .map(row => ({
+            label_tr: row.querySelector('[data-session-label-tr]').value.trim(),
+            label_en: row.querySelector('[data-session-label-en]').value.trim(),
+            date: row.querySelector('[data-session-date]').value,
+            time: row.querySelector('[data-session-time]').value,
+        }))
+        .sort((a, b) => getSessionTimestamp(a) - getSessionTimestamp(b));
+}
+
+function addEventLinkRow(link = {}) {
+    const container = document.getElementById('event-links-list');
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.dataset.eventLinkRow = '';
+    row.className = 'rounded-lg border border-border-dark bg-background-dark/40 p-3';
+    row.innerHTML = `
+        <div class="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div>
+                <label class="mb-1 block text-[11px] text-text-muted" data-i18n="admin.linkLabelTr">${t('admin.linkLabelTr')}</label>
+                <input type="text" data-link-label-tr class="${adminFieldClass}" value="${escapeHTML(link.label_tr || '')}" placeholder="Ör: Fotoğraflar" />
+            </div>
+            <div>
+                <label class="mb-1 block text-[11px] text-text-muted" data-i18n="admin.linkLabelEn">${t('admin.linkLabelEn')}</label>
+                <input type="text" data-link-label-en class="${adminFieldClass}" value="${escapeHTML(link.label_en || '')}" placeholder="E.g. Photos" />
+            </div>
+            <button type="button" onclick="removeEventLinkRow(this)"
+                class="ml-auto grid h-[42px] w-[42px] place-items-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 transition-colors hover:bg-red-500/20"
+                title="${escapeHTML(t('admin.removeLink'))}" aria-label="${escapeHTML(t('admin.removeLink'))}">
+                <span class="material-symbols-outlined text-[17px]">delete</span>
+            </button>
+        </div>
+        <div class="mt-2">
+            <label class="mb-1 block text-[11px] text-text-muted" data-i18n="admin.linkUrl">${t('admin.linkUrl')}</label>
+            <input type="url" data-link-url class="${adminFieldClass}" value="${escapeHTML(link.url || '')}" placeholder="https://drive.google.com/..." />
+        </div>`;
+    container.appendChild(row);
+}
+
+function removeEventLinkRow(button) {
+    button.closest('[data-event-link-row]')?.remove();
+}
+
+function setEventLinksForm(links) {
+    const container = document.getElementById('event-links-list');
+    if (!container) return;
+    container.innerHTML = '';
+    const normalized = Array.isArray(links) && links.length > 0 ? links : [{}];
+    normalized.forEach(link => addEventLinkRow(link));
+}
+
+function collectEventLinks() {
+    const links = [];
+    const rows = Array.from(document.querySelectorAll('#event-links-list [data-event-link-row]'));
+
+    for (const row of rows) {
+        const label_tr = row.querySelector('[data-link-label-tr]').value.trim();
+        const label_en = row.querySelector('[data-link-label-en]').value.trim();
+        const rawUrl = row.querySelector('[data-link-url]').value.trim();
+        if (!label_tr && !label_en && !rawUrl) continue;
+        if ((!label_tr && !label_en) || !rawUrl) {
+            throw new Error(currentLang === 'tr'
+                ? 'Her buton için en az bir ad ve bağlantı girin.'
+                : 'Enter at least one name and a URL for each button.');
+        }
+        const url = getSafeExternalUrl(rawUrl);
+        if (!url) {
+            throw new Error(currentLang === 'tr'
+                ? 'Buton bağlantıları http:// veya https:// ile başlamalıdır.'
+                : 'Button links must start with http:// or https://.');
+        }
+        links.push({ label_tr, label_en, url });
+    }
+    return links;
+}
+
+function resetEventDynamicFields() {
+    setEventSessionsForm([{}]);
+    setEventLinksForm([{}]);
+}
+
+/* ========================================
    Event Handlers
    ======================================== */
 
@@ -529,19 +951,23 @@ async function handleEditEvent(id) {
     form.title_en.value = event.title_en || '';
     form.description_tr.value = event.description_tr || '';
     form.description_en.value = event.description_en || '';
-    form.event_date.value = event.date || '';
-    form.event_time.value = event.time || '';
     form.category.value = event.category || 'workshop';
     form.location.value = event.location || '';
-    form.image_url.value = (event.image && !event.image.startsWith('data:')) ? event.image : '';
-    form.event_link.value = event.link || '';
+    form.image_url.value = /^https?:\/\//i.test(event.image || '') ? event.image : '';
+    setEventSessionsForm(getEventSessions(event));
+    setEventLinksForm(getEventLinks(event));
 
     // Set image
     currentEventImage = event.image || '';
-    const preview = document.getElementById('event-image-preview');
-    if (preview && currentEventImage) {
-        preview.src = currentEventImage;
-        preview.classList.remove('hidden');
+    if (currentEventImage) {
+        showEventImagePreview(currentEventImage);
+        if (currentEventImage.startsWith('data:image/')) {
+            setEventImageStatus(t('admin.eventImagePending'), 'pending');
+        } else if (isManagedEventImagePath(currentEventImage)) {
+            setEventImageStatus(t('admin.eventImagePublished'), 'ready');
+        } else {
+            setEventImageStatus();
+        }
     }
 
     // Update form title and buttons
@@ -562,12 +988,10 @@ async function handleEditEvent(id) {
 
 function handleCancelEventEdit() {
     editingEventId = null;
-    currentEventImage = '';
     const form = document.getElementById('event-form');
     if (form) form.reset();
-
-    const preview = document.getElementById('event-image-preview');
-    if (preview) preview.classList.add('hidden');
+    resetEventDynamicFields();
+    clearEventImage();
 
     const formTitle = document.getElementById('event-form-title');
     const submitBtn = document.getElementById('event-submit-btn');
@@ -601,24 +1025,41 @@ async function handleEventFormSubmit(e) {
     e.preventDefault();
     const form = e.target;
 
+    if (isEventImageProcessing) {
+        showToast(t('admin.imageStillProcessing'), 'info');
+        return;
+    }
+
+    let sessions;
+    let links;
+    try {
+        sessions = collectEventSessions();
+        links = collectEventLinks();
+    } catch (err) {
+        showToast(err.message, 'error');
+        return;
+    }
+
     const eventData = {
         title_tr: form.title_tr.value.trim(),
         title_en: form.title_en.value.trim(),
         description_tr: form.description_tr.value.trim(),
         description_en: form.description_en.value.trim(),
-        date: form.event_date.value,
-        time: form.event_time.value,
+        sessions,
+        date: sessions[0]?.date || '',
+        time: sessions[0]?.time || '',
         category: form.category.value,
         location: form.location.value.trim(),
         image: currentEventImage || form.image_url.value.trim(),
-        link: form.event_link.value.trim(),
+        links,
+        link: links[0]?.url || '',
     };
 
     if (!eventData.title_tr && !eventData.title_en) {
         showToast(currentLang === 'tr' ? 'Lütfen en az bir dilde başlık girin.' : 'Please enter a title in at least one language.', 'error');
         return;
     }
-    if (!eventData.date) {
+    if (sessions.length === 0 || sessions.some(session => !session.date)) {
         showToast(currentLang === 'tr' ? 'Lütfen tarih seçin.' : 'Please select a date.', 'error');
         return;
     }
@@ -626,20 +1067,22 @@ async function handleEventFormSubmit(e) {
     try {
         if (editingEventId) {
             await updateEvent(editingEventId, eventData);
-            showToast(t('admin.eventUpdated'), 'success');
+            showToast(t('admin.eventSavedPending'), 'success');
             handleCancelEventEdit();
         } else {
             await addEvent(eventData);
-            showToast(t('admin.eventSaved'), 'success');
+            showToast(t('admin.eventSavedPending'), 'success');
         }
 
         form.reset();
-        currentEventImage = '';
-        const preview = document.getElementById('event-image-preview');
-        if (preview) preview.classList.add('hidden');
+        resetEventDynamicFields();
+        clearEventImage();
         await renderAdminEvents();
     } catch (err) {
-        showToast(currentLang === 'tr' ? 'İşlem başarısız oldu.' : 'Operation failed.', 'error');
+        const quotaError = err?.name === 'QuotaExceededError';
+        showToast(quotaError
+            ? (currentLang === 'tr' ? 'Tarayıcı depolama alanı doldu. Önce bekleyen değişiklikleri siteye yayınlayın.' : 'Browser storage is full. Publish pending changes first.')
+            : (currentLang === 'tr' ? 'İşlem başarısız oldu.' : 'Operation failed.'), 'error');
     }
 }
 
@@ -697,6 +1140,7 @@ function handleCancelMemberEdit() {
 async function handleDeleteMember(id) {
     if (confirm(currentLang === 'tr' ? 'Bu üyeyi silmek istediğinize emin misiniz?' : 'Are you sure you want to delete this member?')) {
         await deleteTeamMember(id);
+        markUnsyncedChanges();
         await renderAdminTeam();
         showToast(t('admin.memberDeleted'), 'success');
         if (editingMemberId === id) handleCancelMemberEdit();
@@ -705,6 +1149,7 @@ async function handleDeleteMember(id) {
 
 async function handleMoveTeamMember(id, direction) {
     await moveTeamMember(id, direction);
+    markUnsyncedChanges();
     await renderAdminTeam();
 }
 
@@ -727,10 +1172,12 @@ async function handleTeamFormSubmit(e) {
     try {
         if (editingMemberId) {
             await updateTeamMember(editingMemberId, memberData);
+            markUnsyncedChanges();
             showToast(t('admin.memberUpdated'), 'success');
             handleCancelMemberEdit();
         } else {
             await addTeamMember(memberData);
+            markUnsyncedChanges();
             showToast(t('admin.memberSaved'), 'success');
         }
 
@@ -1048,8 +1495,8 @@ async function handleGitHubSync() {
 
     // Confirmation dialog
     if (!confirm(currentLang === 'tr'
-        ? 'GitHub\'a senkronize etmek istediğinize emin misiniz? Bu işlem depodaki verilerin üzerine yazacaktır.'
-        : 'Are you sure you want to sync to GitHub? This will overwrite repository data.')) {
+        ? 'Kaydedilen değişiklikler ve görseller siteye yayınlanacak. Devam edilsin mi?'
+        : 'Saved changes and images will be published to the site. Continue?')) {
         return;
     }
 
@@ -1065,9 +1512,16 @@ async function handleGitHubSync() {
             getCategories()
         ]);
 
-        await pushFileToGitHub('data/events.json', JSON.stringify(events, null, 2), token);
+        const preparedEvents = await prepareEventImagesForGitHub(events, token);
+
+        await pushFileToGitHub('data/events.json', JSON.stringify(preparedEvents, null, 2), token);
         await pushFileToGitHub('data/team.json', JSON.stringify(team, null, 2), token);
         await pushFileToGitHub('data/categories.json', JSON.stringify(categories, null, 2), token);
+
+        setEventsData(preparedEvents);
+        await processPendingEventImageDeletions(token, preparedEvents);
+        clearUnsyncedChanges();
+        await renderAdminEvents();
 
         showToast(currentLang === 'tr' ? 'GitHub ile başarıyla senkronize edildi!' : 'Successfully synced with GitHub!', 'success');
     } catch (err) {
@@ -1092,6 +1546,12 @@ async function handleGitHubPull() {
         return false;
     }
 
+    if (hasUnsyncedChanges() && !confirm(currentLang === 'tr'
+        ? 'Henüz siteye yayınlanmamış değişiklikler var. En güncel verileri çekerseniz bu değişiklikler silinir. Devam edilsin mi?'
+        : 'Some changes have not been published yet. Getting the latest data will discard them. Continue?')) {
+        return false;
+    }
+
     _syncInProgress = true;
     setSyncButtonsLoading(true);
 
@@ -1109,6 +1569,8 @@ async function handleGitHubPull() {
         if (eventsData) setEventsData(eventsData);
         if (teamData) setTeamMembersData(teamData);
         if (catData) setCategoriesData(catData);
+        localStorage.removeItem(EVENT_IMAGE_DELETION_KEY);
+        clearUnsyncedChanges();
 
         await Promise.all([
             loadCategorySelector(),
@@ -1163,20 +1625,139 @@ async function fetchFileSHA(url, token) {
     return null;
 }
 
+function bytesToBase64(bytes) {
+    const chunks = [];
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        chunks.push(String.fromCharCode(...bytes.subarray(offset, offset + chunkSize)));
+    }
+    return btoa(chunks.join(''));
+}
+
+function parseImageDataUrl(dataUrl) {
+    const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s.exec(dataUrl || '');
+    if (!match) throw new Error(currentLang === 'tr' ? 'Görsel verisi okunamadı.' : 'Image data could not be read.');
+
+    const binary = atob(match[2]);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return { mimeType: match[1].toLowerCase(), bytes };
+}
+
+async function hashBytes(bytes) {
+    const digest = await crypto.subtle.digest('SHA-256', bytes);
+    return Array.from(new Uint8Array(digest))
+        .map(byte => byte.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+function getImageExtension(mimeType) {
+    const extensions = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/gif': 'gif',
+        'image/avif': 'avif'
+    };
+    const extension = extensions[mimeType];
+    if (!extension) {
+        throw new Error(currentLang === 'tr'
+            ? `Desteklenmeyen eski görsel formatı: ${mimeType}`
+            : `Unsupported legacy image format: ${mimeType}`);
+    }
+    return extension;
+}
+
+async function prepareEventImagesForGitHub(events, token) {
+    const prepared = events.map(event => ({ ...event }));
+    const pending = prepared.filter(event => typeof event.image === 'string' && event.image.startsWith('data:image/'));
+
+    for (let index = 0; index < pending.length; index += 1) {
+        const event = pending[index];
+        const message = t('admin.uploadingImages')
+            .replace('{current}', String(index + 1))
+            .replace('{total}', String(pending.length));
+        showToast(message, 'info');
+
+        const { mimeType, bytes } = parseImageDataUrl(event.image);
+        const hash = (await hashBytes(bytes)).slice(0, 12);
+        const safeEventId = String(event.id || `event-${index + 1}`)
+            .toLowerCase()
+            .replace(/[^a-z0-9_-]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 64) || `event-${index + 1}`;
+        const path = `assets/events/${safeEventId}-${hash}.${getImageExtension(mimeType)}`;
+
+        await pushBytesToGitHub(path, bytes, token, `Admin Panel: Add event image ${safeEventId}`);
+        event.image = path;
+    }
+
+    return prepared;
+}
+
+async function deleteFileFromGitHub(path, token) {
+    const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`;
+    const sha = await fetchFileSHA(url, token);
+    if (!sha) return;
+
+    const response = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            message: `Admin Panel: Remove unused event image ${path}`,
+            sha,
+            branch: GITHUB_BRANCH
+        })
+    });
+    if (!response.ok && response.status !== 404) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || `Failed to delete ${path}`);
+    }
+}
+
+async function processPendingEventImageDeletions(token, events) {
+    let queued = [];
+    try {
+        queued = JSON.parse(localStorage.getItem(EVENT_IMAGE_DELETION_KEY) || '[]');
+    } catch {
+        queued = [];
+    }
+    if (!Array.isArray(queued) || queued.length === 0) return;
+
+    const referenced = new Set(events.map(event => event.image).filter(isManagedEventImagePath));
+    const failed = [];
+    for (const path of queued) {
+        if (referenced.has(path)) continue;
+        try {
+            await deleteFileFromGitHub(path, token);
+        } catch (error) {
+            console.warn(`Could not remove unused image ${path}`, error);
+            failed.push(path);
+        }
+    }
+
+    if (failed.length > 0) localStorage.setItem(EVENT_IMAGE_DELETION_KEY, JSON.stringify(failed));
+    else localStorage.removeItem(EVENT_IMAGE_DELETION_KEY);
+}
+
 async function pushFileToGitHub(path, content, token, _isRetry = false) {
+    const bytes = new TextEncoder().encode(content);
+    return pushBytesToGitHub(path, bytes, token, `Admin Panel: Update ${path}`, _isRetry);
+}
+
+async function pushBytesToGitHub(path, bytes, token, message, _isRetry = false) {
     const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${path}`;
 
     // 1. Get file SHA
     let sha = await fetchFileSHA(url, token);
 
-    // 2. Safely encode content to Base64 (supports UTF-8)
-    const utf8Bytes = new TextEncoder().encode(content);
-    const base64Content = btoa(Array.from(new Uint8Array(utf8Bytes)).map(byte => String.fromCharCode(byte)).join(''));
-
-    // 3. Push to GitHub
+    // 2. Push to GitHub
     const body = {
-        message: `Admin Panel: Update ${path}`,
-        content: base64Content,
+        message,
+        content: bytesToBase64(bytes),
         branch: GITHUB_BRANCH
     };
     if (sha) body.sha = sha;
@@ -1197,7 +1778,7 @@ async function pushFileToGitHub(path, content, token, _isRetry = false) {
         // Auto-retry once on 409 Conflict (SHA mismatch from concurrent edit)
         if (status === 409 && !_isRetry) {
             console.warn(`SHA conflict for ${path}, retrying...`);
-            return pushFileToGitHub(path, content, token, true);
+            return pushBytesToGitHub(path, bytes, token, message, true);
         }
 
         // User-friendly error messages
@@ -1239,9 +1820,9 @@ async function initAdmin() {
         loginScreen.classList.add('hidden');
         adminContent.classList.remove('hidden');
 
-        // Auto-pull from GitHub if a token is available to ensure we have the very latest data
+        // Preserve unpublished local work instead of replacing it during startup.
         const token = getCookie(GITHUB_TOKEN_KEY);
-        if (token) {
+        if (token && !hasUnsyncedChanges()) {
             await handleGitHubPull();
         } else {
             // Pre-warm all caches locally
@@ -1254,6 +1835,7 @@ async function initAdmin() {
             ]);
         }
         setupAdminForms();
+        updatePublishStatus();
     } else {
         loginScreen.classList.remove('hidden');
         adminContent.classList.add('hidden');
@@ -1271,7 +1853,7 @@ async function initAdmin() {
                 adminContent.classList.remove('hidden');
 
                 const token = getCookie(GITHUB_TOKEN_KEY);
-                if (token) {
+                if (token && !hasUnsyncedChanges()) {
                     await handleGitHubPull();
                 } else {
                     await Promise.all([getCategories(), getEvents(), getTeamMembers()]);
@@ -1283,6 +1865,7 @@ async function initAdmin() {
                     ]);
                 }
                 setupAdminForms();
+                updatePublishStatus();
             } else {
                 showToast(t('admin.wrongPassword'), 'error');
                 document.getElementById('admin-password-input').value = '';
@@ -1303,6 +1886,9 @@ function setupAdminForms() {
     if (eventForm) {
         eventForm.addEventListener('submit', handleEventFormSubmit);
     }
+    if (!document.querySelector('#event-sessions-list [data-session-row]')) {
+        resetEventDynamicFields();
+    }
 
     // Team form
     const teamForm = document.getElementById('team-form');
@@ -1311,9 +1897,7 @@ function setupAdminForms() {
     }
 
     // Image upload for events
-    setupImageUpload('event-image-drop', 'event-image-preview', (img) => {
-        currentEventImage = img;
-    });
+    setupEventImageUpload();
     setupUrlInput('event-image-url', 'event-image-preview', (url) => {
         currentEventImage = url;
     });
